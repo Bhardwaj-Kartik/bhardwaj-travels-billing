@@ -62,7 +62,7 @@ function BillA4({ b }) {
         <div style={{ padding: "14px 18px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <img src={logo} style={{ width: 50, height: 50, objectFit: 'contain', flexShrink: 0 }} />
+              <img src={logo} style={{ width: 80, height: 80, objectFit: 'contain', flexShrink: 0 }} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
                 <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
