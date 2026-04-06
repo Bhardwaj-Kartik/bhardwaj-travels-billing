@@ -53,7 +53,7 @@ function BillA4({ b }) {
   return (
     <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
       {/* WATERMARK */}
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 0, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 0, pointerEvents: "none" }}>
         <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.07 }} />
       </div>
 
@@ -126,7 +126,7 @@ function BillA4({ b }) {
               <div>UPI: {BUSINESS.bank.upi}</div>
               <div style={{ marginTop: 6 }}>
                 <img src={UPI_QR_URL} style={{ width: 80, height: 80 }} crossOrigin="anonymous" />
-                <div style={{ fontSize: "7pt", color: "#555", textAlign: "center", marginTop: 2 }}>Scan to Pay</div>
+                <div style={{ fontSize: "7pt", color: "#555", textAlign: "left", marginTop: 2 }}>Scan to Pay</div>
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
