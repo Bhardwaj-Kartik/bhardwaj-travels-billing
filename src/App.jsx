@@ -131,8 +131,8 @@ function BillA4({ b }) {
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "cursive", fontSize: "13pt", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700 }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "9pt" }}>Prop.</div>
+              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700, textAlign: "right"  }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "9pt", textAlign: "right", marginTop: 8  }}>Prop.</div>
             </div>
           </div>
           <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
