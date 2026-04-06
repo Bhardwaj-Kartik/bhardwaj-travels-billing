@@ -4,8 +4,6 @@ import { supabase } from "./supabase.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-const LOGO_SVG = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><rect x="18" y="10" width="28" height="155" rx="14"/><path d="M46 60 Q46 30 95 30 Q150 30 168 75 Q178 98 168 125 Q150 170 95 170 Q46 170 46 140 L46 115 Q46 145 95 145 Q138 145 148 120 Q155 103 148 80 Q138 55 95 55 Q46 55 46 60 Z"/><rect x="60" y="92" width="70" height="22" rx="11"/></g></svg>`;
-
 const BUSINESS = {
   name: "Bhardwaj Travels", tagline: "CARZ A RENT SAFE RIDE",
   deals: "Deals in: Etios, Dzire & Innova Crysta etc.",
@@ -161,9 +159,10 @@ export default function App() {
   const [inlineBillCharge, setInlineBillCharge] = useState({});
   const [inlineBillGst, setInlineBillGst] = useState({});
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [viewingBill, setViewingBill] = useState(null);
   const billsRef = useRef();
+  const viewBillRef = useRef();
 
-  // Load data from Supabase on login
   const loadData = async () => {
     setLoading(true);
     const [{ data: billsData }, { data: ratesData }, { data: chargesData }, { data: gstData }] = await Promise.all([
@@ -253,6 +252,24 @@ export default function App() {
     setPdfLoading(false);
   };
 
+  const generateSinglePDF = async (invoiceNo) => {
+    if (!viewBillRef.current) return;
+    setPdfLoading(true);
+    try {
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const canvas = await html2canvas(viewBillRef.current, { scale: 3, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, windowWidth: 794 });
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
+      pdf.save(`BhardwajTravels_${invoiceNo}.pdf`);
+    } catch (e) { alert("PDF generation failed. Please try printing instead."); }
+    setPdfLoading(false);
+  };
+
+  const openBill = (b, fromPage) => {
+    setViewingBill({ ...b, _fromPage: fromPage });
+    setPage("viewBill");
+  };
+
   const autoFill = (idx, name) => {
     const prev = bills.find(b => b.client_name?.toLowerCase() === name.toLowerCase());
     if (prev) setEntries(es => es.map((e, i) => i === idx ? { ...e, clientPhone: prev.client_phone || e.clientPhone, clientAddress: prev.client_address || e.clientAddress, clientGstin: prev.client_gstin || e.clientGstin } : e));
@@ -292,6 +309,7 @@ export default function App() {
     if (summaryClient) ok = ok && b.client_name?.toLowerCase().includes(summaryClient.toLowerCase());
     return ok;
   });
+
   const summaryCalc = summaryBills.reduce((acc, b) => {
     const c = calcBill(b);
     const gb = {};
@@ -351,6 +369,36 @@ export default function App() {
       </div>
     </div>
   );
+
+  if (page === "viewBill" && viewingBill) {
+    const vb = {
+      invoiceNo: viewingBill.invoice_no,
+      cabNo: viewingBill.cab_no,
+      date: viewingBill.date,
+      clientName: viewingBill.client_name,
+      clientPhone: viewingBill.client_phone,
+      clientAddress: viewingBill.client_address,
+      clientGstin: viewingBill.client_gstin,
+      dutyType: viewingBill.duty_type,
+      rows: viewingBill.rows || [],
+      charges: viewingBill.charges || [],
+      gstLines: viewingBill.gst_lines || [],
+    };
+    return (
+      <div style={s}>
+        <div style={{ background: "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), padding: "4px 10px" }} onClick={() => { setPage(viewingBill._fromPage || "history"); setViewingBill(null); }}>← Back</button>
+          <span style={{ fontWeight: 500 }}>Bill #{viewingBill.invoice_no} — {viewingBill.client_name}</span>
+          <button style={{ ...btn("#fff", "#185FA5"), marginLeft: "auto", fontSize: 12, opacity: pdfLoading ? 0.6 : 1 }} onClick={() => generateSinglePDF(viewingBill.invoice_no)} disabled={pdfLoading}>{pdfLoading ? "Generating..." : "⬇ Download PDF"}</button>
+        </div>
+        <div style={{ padding: 12, overflowX: "auto" }}>
+          <div ref={viewBillRef}>
+            <BillA4 b={vb} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (page === "create") {
     const bill = entries[activeEntry];
@@ -629,7 +677,10 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{ fontWeight: 500, fontSize: 13 }}>₹{c.grand.toFixed(2)}</div>
-                      <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "2px 6px", fontSize: 10, marginTop: 4 }} onClick={() => deleteBill(b.id)}>Delete</button>
+                      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                        <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10 }} onClick={() => openBill(b, "history")}>👁 View</button>
+                        <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "2px 6px", fontSize: 10 }} onClick={() => deleteBill(b.id)}>Delete</button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -663,8 +714,15 @@ export default function App() {
           {sorted.map(b => { const c = calcBill(b); return (
             <div key={b.id} style={{ ...card, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
               <input type="checkbox" checked={b.paid} onChange={() => togglePaid(b.id)} style={{ width: 18, height: 18, cursor: "pointer", flexShrink: 0 }} />
-              <div style={{ flex: 1 }}><div style={{ fontWeight: 500, fontSize: 13 }}>{b.client_name}</div><div style={{ fontSize: 11, color: "#666" }}>#{b.invoice_no} · {b.date}</div></div>
-              <div style={{ textAlign: "right" }}><div style={{ fontWeight: 500, fontSize: 13, color: b.paid ? "#3B6D11" : "#A32D2D" }}>₹{c.grand.toFixed(2)}</div><div style={{ fontSize: 10, color: b.paid ? "#3B6D11" : "#A32D2D" }}>{b.paid ? "Paid" : "Unpaid"}</div></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500, fontSize: 13 }}>{b.client_name}</div>
+                <div style={{ fontSize: 11, color: "#666" }}>#{b.invoice_no} · {b.date}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 500, fontSize: 13, color: b.paid ? "#3B6D11" : "#A32D2D" }}>₹{c.grand.toFixed(2)}</div>
+                <div style={{ fontSize: 10, color: b.paid ? "#3B6D11" : "#A32D2D" }}>{b.paid ? "Paid" : "Unpaid"}</div>
+                <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10, marginTop: 4 }} onClick={() => openBill(b, "checklist")}>👁 View</button>
+              </div>
             </div>
           ); })}
         </div>
@@ -697,9 +755,12 @@ export default function App() {
             <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, color: "#185FA5" }}>Bills in Range ({summaryBills.length})</div>
             {summaryBills.length === 0 && <div style={{ color: "#666", fontSize: 13 }}>No bills in selected range.</div>}
             {summaryBills.map(b => { const c = calcBill(b); return (
-              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "0.5px solid #eee", fontSize: 12 }}>
+              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "0.5px solid #eee", fontSize: 12 }}>
                 <div><span style={{ fontWeight: 500 }}>{b.client_name}</span><span style={{ color: "#666", marginLeft: 8 }}>#{b.invoice_no} · {b.date}</span></div>
-                <span style={{ fontWeight: 500 }}>₹{c.grand.toFixed(2)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 500 }}>₹{c.grand.toFixed(2)}</span>
+                  <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10 }} onClick={() => openBill(b, "summary")}>👁 View</button>
+                </div>
               </div>
             ); })}
           </div>
