@@ -38,7 +38,7 @@ function numToWords(n) {
 }
 
 const emptyRow = () => ({ id: Date.now() + Math.random(), date: "", particulars: "", rate: "", amount: "" });
-const emptyBill = (ct, gt) => ({ invoiceNo: "", cabNo: "", date: new Date().toISOString().slice(0, 10), clientName: "", clientPhone: "", clientAddress: "", clientGstin: "", dutyType: "local", rows: [emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()], charges: ct.map(c => ({ id: c.id, label: c.label, mode: "none", value: "" })), gstLines: gt.map(g => ({ ...g })), paid: false });
+const emptyBill = (ct, gt) => ({ invoiceNo: "", dutySlipNo: "", cabNo: "", date: new Date().toISOString().slice(0, 10), clientName: "", clientPhone: "", clientAddress: "", clientGstin: "", dutyType: "local", rows: [emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()], charges: ct.map(c => ({ id: c.id, label: c.label, mode: "none", value: "" })), gstLines: gt.map(g => ({ ...g })), paid: false });
 
 function calcBill(bill) {
   const rowTotal = (bill.rows || []).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
@@ -75,6 +75,7 @@ function BillA4({ b }) {
               <div style={{ fontSize: "20pt", fontWeight: 700, color: "#185FA5" }}>TAX INVOICE</div>
               <div style={{ fontSize: "9pt" }}>GSTIN: {BUSINESS.gstin}</div>
               <div style={{ fontSize: "10pt", fontWeight: 700 }}>Invoice No: {b.invoiceNo}</div>
+{b.dutySlipNo && <div style={{ fontSize: "9pt" }}>Duty Slip No: {b.dutySlipNo}</div>}
               <div style={{ fontSize: "9pt" }}>Date: {b.date}</div>
               {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
               <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
@@ -186,7 +187,15 @@ export default function App() {
       supabase.from("charge_types").select("*"),
       supabase.from("gst_types").select("*"),
     ]);
-    if (billsData) setBills(billsData.map(b => ({ ...b, rows: b.rows || [], charges: b.charges || [], gstLines: b.gst_lines || [] })));
+    if (billsData) {
+  setBills(billsData.map(b => ({ ...b, rows: b.rows || [], charges: b.charges || [], gstLines: b.gst_lines || [] })));
+  if (billsData.length > 0) {
+    const lastInvoice = parseInt(billsData[0].invoice_no) || 0;
+    const lastDutySlip = parseInt(billsData[0].duty_slip_no) || 0;
+    setEntries([emptyBill(DEFAULT_CHARGES, DEFAULT_GST)]);
+    setEntries(es => es.map((e, i) => i === 0 ? { ...e, invoiceNo: String(lastInvoice + 1), dutySlipNo: String(lastDutySlip + 1) } : e));
+  }
+}
     if (ratesData && ratesData.length > 0) setRates(ratesData);
     if (chargesData && chargesData.length > 0) setChargeTypes(chargesData);
     if (gstData && gstData.length > 0) setGstTypes(gstData);
@@ -207,7 +216,7 @@ export default function App() {
     setLoading(true);
     for (const e of entries) {
       await supabase.from("bills").insert({
-        invoice_no: e.invoiceNo, cab_no: e.cabNo, date: e.date,
+        invoice_no: e.invoiceNo, duty_slip_no: e.dutySlipNo, cab_no: e.cabNo, date: e.date,
         client_name: e.clientName, client_phone: e.clientPhone,
         client_address: e.clientAddress, client_gstin: e.clientGstin,
         duty_type: e.dutyType, rows: e.rows, charges: e.charges,
@@ -395,6 +404,7 @@ export default function App() {
       clientAddress: viewingBill.client_address,
       clientGstin: viewingBill.client_gstin,
       dutyType: viewingBill.duty_type,
+      dutySlipNo: viewingBill.duty_slip_no || "",
       rows: viewingBill.rows || [],
       charges: viewingBill.charges || [],
       gstLines: viewingBill.gst_lines || [],
@@ -491,9 +501,31 @@ export default function App() {
             <div style={card}>
               <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Bill Details</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div><label style={lbl}>Invoice No *</label><input style={inp} value={bill.invoiceNo} onChange={e => upE(activeEntry, "invoiceNo", e.target.value)} placeholder="e.g. 1086" /></div>
+                <div>
+  <label style={lbl}>Invoice No *</label>
+  <div style={{ display: "flex", gap: 4 }}>
+    <input style={{ ...inp, flex: 1 }} value={bill.invoiceNo} onChange={e => upE(activeEntry, "invoiceNo", e.target.value)} placeholder="e.g. 1086" />
+    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "invoiceNo", String((parseInt(bill.invoiceNo) || 0) + 1))}>+</button>
+  </div>
+</div>
+<div>
+  <label style={lbl}>Duty Slip No</label>
+  <div style={{ display: "flex", gap: 4 }}>
+    <input style={{ ...inp, flex: 1 }} value={bill.dutySlipNo} onChange={e => upE(activeEntry, "dutySlipNo", e.target.value)} placeholder="e.g. 1086" />
+    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "dutySlipNo", String((parseInt(bill.dutySlipNo) || 0) + 1))}>+</button>
+  </div>
+</div>
                 <div><label style={lbl}>Date *</label><input style={inp} type="date" value={bill.date} onChange={e => upE(activeEntry, "date", e.target.value)} /></div>
-                <div><label style={lbl}>Cab No</label><input style={inp} value={bill.cabNo} onChange={e => upE(activeEntry, "cabNo", e.target.value)} placeholder="PB-XX-XXXX" /></div>
+                <div>
+  <label style={lbl}>Cab No</label>
+  <select style={inp} value={["PB01A7826","PB01C1838","PB01G1080"].includes(bill.cabNo) ? bill.cabNo : "custom"} onChange={e => { if (e.target.value === "custom") upE(activeEntry, "cabNo", ""); else upE(activeEntry, "cabNo", e.target.value); }}>
+    <option value="PB01A7826">PB01A7826</option>
+    <option value="PB01C1838">PB01C1838</option>
+    <option value="PB01G1080">PB01G1080</option>
+    <option value="custom">Custom...</option>
+  </select>
+  {!["PB01A7826","PB01C1838","PB01G1080"].includes(bill.cabNo) && <input style={{ ...inp, marginTop: 4 }} placeholder="Enter Cab No" value={bill.cabNo} onChange={e => upE(activeEntry, "cabNo", e.target.value)} />}
+</div>
                 <div><label style={lbl}>Duty Type</label>
                   <select style={inp} value={["local", "outstation"].includes(bill.dutyType) ? bill.dutyType : "custom"} onChange={e => { if (e.target.value === "custom") upE(activeEntry, "dutyType", "custom_"); else upE(activeEntry, "dutyType", e.target.value); }}>
                     <option value="local">Local Duty</option>
