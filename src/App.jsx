@@ -243,7 +243,7 @@ export default function App() {
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pages = billsRef.current.querySelectorAll(".bill-page");
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+        const canvas = await html2canvas(pages[i], { scale: 3, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, windowWidth: 794 });
         const imgData = canvas.toDataURL("image/png");
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, "PNG", 0, 0, 210, 297);
