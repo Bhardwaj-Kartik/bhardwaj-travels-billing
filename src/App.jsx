@@ -1,3 +1,4 @@
+import logo from './assets/logo.png'
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase.js";
 import jsPDF from "jspdf";
@@ -55,7 +56,7 @@ function BillA4({ b }) {
       <div style={{ padding: "14px 18px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <div style={{ width: 50, height: 50, color: "#185FA5", flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
+            <img src={logo} style={{ width: 50, height: 50, objectFit: 'contain', flexShrink: 0 }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
               <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
@@ -307,7 +308,7 @@ export default function App() {
   if (page === "login") return (
     <div style={{ ...s, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
       <div style={{ ...card, width: 320, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, margin: "0 auto 12px", color: "#185FA5" }} dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
+        <img src={logo} style={{ width: 64, height: 64, margin: "0 auto 12px", objectFit: 'contain' }} />
         <div style={{ fontSize: 18, fontWeight: 500 }}>Bhardwaj Travel's</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 20 }}>Billing Software</div>
         <input style={{ ...inp, marginBottom: 10 }} placeholder="Username" value={loginUser} onChange={e => setLoginUser(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
@@ -325,7 +326,7 @@ export default function App() {
     <div style={s}>
       <div style={{ background: "#185FA5", color: "#fff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, color: "#fff" }} dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
+          <img src={logo} style={{ width: 32, height: 32, objectFit: 'contain' }} />
           <div><div style={{ fontWeight: 500, fontSize: 15 }}>Bhardwaj Travel's</div><div style={{ fontSize: 11, opacity: 0.8 }}>Billing Software</div></div>
         </div>
         <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), fontSize: 12 }} onClick={() => setPage("login")}>Logout</button>
