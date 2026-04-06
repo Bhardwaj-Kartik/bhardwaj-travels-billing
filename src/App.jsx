@@ -18,6 +18,8 @@ const RATES_DEFAULT = [{ id: 1, name: "Etios Local", type: "per_km", rate: 12 },
 const DEFAULT_CHARGES = [{ id: "toll", label: "Toll / Parking / Entry Tax" }, { id: "extraKm", label: "Extra KM" }, { id: "extraHrs", label: "Extra Hours" }, { id: "da", label: "DA (Driver Allowance)" }, { id: "nightCharges", label: "Night Charges" }];
 const DEFAULT_GST = [{ id: "cgst", label: "CGST", pct: 2.5, enabled: true }, { id: "sgst", label: "SGST", pct: 2.5, enabled: true }, { id: "igst", label: "IGST", pct: 5, enabled: false }];
 
+const UPI_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=upi://pay?pa=9815970070@CNRB%26pn=Bhardwaj%20Travels`;
+
 function numToWords(n) {
   if (!n || isNaN(n)) return "";
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
@@ -49,85 +51,96 @@ function calcBill(bill) {
 function BillA4({ b }) {
   const c = calcBill(b);
   return (
-    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always" }}>
-      <div style={{ background: "#185FA5", height: 8 }} />
-      <div style={{ padding: "14px 18px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <img src={logo} style={{ width: 50, height: 50, objectFit: 'contain', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
-              <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
-              <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.deals}</div>
-              <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.address}</div>
-              <div style={{ fontSize: "9pt" }}>Mob: {BUSINESS.phones.join(" / ")} | {BUSINESS.email}</div>
+    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
+      {/* WATERMARK */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 0, pointerEvents: "none" }}>
+        <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.07 }} />
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ background: "#185FA5", height: 8 }} />
+        <div style={{ padding: "14px 18px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <img src={logo} style={{ width: 50, height: 50, objectFit: 'contain', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
+                <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
+                <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.deals}</div>
+                <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.address}</div>
+                <div style={{ fontSize: "9pt" }}>Mob: {BUSINESS.phones.join(" / ")} | {BUSINESS.email}</div>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "20pt", fontWeight: 700, color: "#185FA5" }}>TAX INVOICE</div>
+              <div style={{ fontSize: "9pt" }}>GSTIN: {BUSINESS.gstin}</div>
+              <div style={{ fontSize: "10pt", fontWeight: 700 }}>Invoice No: {b.invoiceNo}</div>
+              <div style={{ fontSize: "9pt" }}>Date: {b.date}</div>
+              {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
+              <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "20pt", fontWeight: 700, color: "#185FA5" }}>TAX INVOICE</div>
-            <div style={{ fontSize: "9pt" }}>GSTIN: {BUSINESS.gstin}</div>
-            <div style={{ fontSize: "10pt", fontWeight: 700 }}>Invoice No: {b.invoiceNo}</div>
-            <div style={{ fontSize: "9pt" }}>Date: {b.date}</div>
-            {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
-            <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
+          <div style={{ borderTop: "2px solid #185FA5", borderBottom: "1px solid #185FA5", padding: "7px 0", marginBottom: 10 }}>
+            <div style={{ fontSize: "9pt", color: "#555" }}>Bill To:</div>
+            <div style={{ fontWeight: 700, fontSize: "13pt" }}>{b.clientName}</div>
+            {b.clientPhone && <div style={{ fontSize: "9pt" }}>{b.clientPhone}</div>}
+            {b.clientAddress && <div style={{ fontSize: "9pt" }}>{b.clientAddress}</div>}
+            {b.clientGstin && <div style={{ fontSize: "9pt" }}>GSTIN: {b.clientGstin}</div>}
           </div>
-        </div>
-        <div style={{ borderTop: "2px solid #185FA5", borderBottom: "1px solid #185FA5", padding: "7px 0", marginBottom: 10 }}>
-          <div style={{ fontSize: "9pt", color: "#555" }}>Bill To:</div>
-          <div style={{ fontWeight: 700, fontSize: "13pt" }}>{b.clientName}</div>
-          {b.clientPhone && <div style={{ fontSize: "9pt" }}>{b.clientPhone}</div>}
-          {b.clientAddress && <div style={{ fontSize: "9pt" }}>{b.clientAddress}</div>}
-          {b.clientGstin && <div style={{ fontSize: "9pt" }}>GSTIN: {b.clientGstin}</div>}
-        </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10pt", marginBottom: 8 }}>
-          <thead>
-            <tr style={{ background: "#185FA5", color: "#fff" }}>
-              {["Date of Travel", "Particulars", "Rate", "Amount (₹)"].map((h, i) => <th key={i} style={{ padding: "6px 8px", textAlign: i > 1 ? "right" : "left", border: "1px solid #185FA5", fontWeight: 600 }}>{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {(b.rows || []).filter(r => r.particulars || r.amount).map((r, ri) => (
-              <tr key={ri} style={{ borderBottom: "0.5px solid #ddd" }}>
-                <td style={{ padding: "5px 8px", border: "0.5px solid #ddd", whiteSpace: "nowrap" }}>{r.date}</td>
-                <td style={{ padding: "5px 8px", border: "0.5px solid #ddd", whiteSpace: "pre-wrap" }}>{r.particulars}</td>
-                <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{r.rate && r.rate !== "custom" ? `₹${r.rate}` : ""}</td>
-                <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{r.amount ? `₹${parseFloat(r.amount).toFixed(2)}` : ""}</td>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10pt", marginBottom: 8 }}>
+            <thead>
+              <tr style={{ background: "#185FA5", color: "#fff" }}>
+                {["Date of Travel", "Particulars", "Rate", "Amount (₹)"].map((h, i) => <th key={i} style={{ padding: "6px 8px", textAlign: i > 1 ? "right" : "left", border: "1px solid #185FA5", fontWeight: 600 }}>{h}</th>)}
               </tr>
-            ))}
-            {(b.charges || []).filter(c => c.mode !== "none").map((c, i) => (
-              <tr key={i}><td colSpan={2} style={{ padding: "5px 8px", border: "0.5px solid #ddd" }}>{c.label}</td><td></td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{c.mode === "nil" ? "Nil" : `₹${parseFloat(c.value || 0).toFixed(2)}`}</td></tr>
-            ))}
-            {Array.from({ length: Math.max(0, 8 - (b.rows || []).filter(r => r.particulars || r.amount).length - (b.charges || []).filter(c => c.mode !== "none").length) }).map((_, i) => (
-              <tr key={"e" + i}><td style={{ padding: "5px 8px", border: "0.5px solid #ddd", height: 22 }}>&nbsp;</td><td style={{ border: "0.5px solid #ddd" }}></td><td style={{ border: "0.5px solid #ddd" }}></td><td style={{ border: "0.5px solid #ddd" }}></td></tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: "#f0f0f0" }}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>Total</td><td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>₹{c.subtotal.toFixed(2)}</td></tr>
-            {(b.gstLines || []).filter(g => g.enabled).map(g => (
-              <tr key={g.id}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{g.label} @ {g.pct}%</td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>₹{(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</td></tr>
-            ))}
-            <tr style={{ background: "#185FA5", color: "#fff" }}><td colSpan={3} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>Grand Total</td><td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>₹{c.grand.toFixed(2)}</td></tr>
-            <tr><td colSpan={4} style={{ padding: "5px 8px", fontSize: "9pt", fontStyle: "italic", border: "0.5px solid #ddd" }}>Amount in words: {numToWords(c.grand)}</td></tr>
-          </tfoot>
-        </table>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9pt", marginTop: 10 }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: "10pt", marginBottom: 4 }}>Payment Info:</div>
-            <div>Bank: {BUSINESS.bank.name} | A/C: {BUSINESS.bank.acc}</div>
-            <div>IFSC: {BUSINESS.bank.ifsc} | A/C Name: {BUSINESS.bank.holder}</div>
-            <div>UPI: {BUSINESS.bank.upi}</div>
+            </thead>
+            <tbody>
+              {(b.rows || []).filter(r => r.particulars || r.amount).map((r, ri) => (
+                <tr key={ri} style={{ borderBottom: "0.5px solid #ddd" }}>
+                  <td style={{ padding: "5px 8px", border: "0.5px solid #ddd", whiteSpace: "nowrap" }}>{r.date}</td>
+                  <td style={{ padding: "5px 8px", border: "0.5px solid #ddd", whiteSpace: "pre-wrap" }}>{r.particulars}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{r.rate && r.rate !== "custom" ? `₹${r.rate}` : ""}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{r.amount ? `₹${parseFloat(r.amount).toFixed(2)}` : ""}</td>
+                </tr>
+              ))}
+              {(b.charges || []).filter(c => c.mode !== "none").map((c, i) => (
+                <tr key={i}><td colSpan={2} style={{ padding: "5px 8px", border: "0.5px solid #ddd" }}>{c.label}</td><td></td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{c.mode === "nil" ? "Nil" : `₹${parseFloat(c.value || 0).toFixed(2)}`}</td></tr>
+              ))}
+              {Array.from({ length: Math.max(0, 8 - (b.rows || []).filter(r => r.particulars || r.amount).length - (b.charges || []).filter(c => c.mode !== "none").length) }).map((_, i) => (
+                <tr key={"e" + i}><td style={{ padding: "5px 8px", border: "0.5px solid #ddd", height: 22 }}>&nbsp;</td><td style={{ border: "0.5px solid #ddd" }}></td><td style={{ border: "0.5px solid #ddd" }}></td><td style={{ border: "0.5px solid #ddd" }}></td></tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: "#f0f0f0" }}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>Total</td><td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>₹{c.subtotal.toFixed(2)}</td></tr>
+              {(b.gstLines || []).filter(g => g.enabled).map(g => (
+                <tr key={g.id}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{g.label} @ {g.pct}%</td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>₹{(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</td></tr>
+              ))}
+              <tr style={{ background: "#185FA5", color: "#fff" }}><td colSpan={3} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>Grand Total</td><td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>₹{c.grand.toFixed(2)}</td></tr>
+              <tr><td colSpan={4} style={{ padding: "5px 8px", fontSize: "9pt", fontStyle: "italic", border: "0.5px solid #ddd" }}>Amount in words: {numToWords(c.grand)}</td></tr>
+            </tfoot>
+          </table>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9pt", marginTop: 10, alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "10pt", marginBottom: 4 }}>Payment Info:</div>
+              <div>Bank: {BUSINESS.bank.name} | A/C: {BUSINESS.bank.acc}</div>
+              <div>IFSC: {BUSINESS.bank.ifsc} | A/C Name: {BUSINESS.bank.holder}</div>
+              <div>UPI: {BUSINESS.bank.upi}</div>
+              <div style={{ marginTop: 6 }}>
+                <img src={UPI_QR_URL} style={{ width: 80, height: 80 }} crossOrigin="anonymous" />
+                <div style={{ fontSize: "7pt", color: "#555", textAlign: "center", marginTop: 2 }}>Scan to Pay</div>
+              </div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "cursive", fontSize: "13pt", marginBottom: 4 }}>Thanks For Visit</div>
+              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700 }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "9pt" }}>Prop.</div>
+            </div>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "cursive", fontSize: "13pt", marginBottom: 4 }}>Thanks For Visit</div>
-            <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700 }}>For Bhardwaj Travels</div>
-            <div style={{ fontSize: "9pt" }}>Prop.</div>
+          <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
+            {BUSINESS.terms.map((t, i) => <div key={i} style={{ fontSize: "8.5pt", color: "#555" }}>{t}</div>)}
           </div>
         </div>
-        <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
-          {BUSINESS.terms.map((t, i) => <div key={i} style={{ fontSize: "8.5pt", color: "#555" }}>{t}</div>)}
-        </div>
+        <div style={{ background: "#185FA5", height: 8 }} />
       </div>
-      <div style={{ background: "#185FA5", height: 8 }} />
     </div>
   );
 }
@@ -148,6 +161,8 @@ export default function App() {
   const [previewMode, setPreviewMode] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyKey, setHistoryKey] = useState("clientName");
+  const [checklistSearch, setChecklistSearch] = useState("");
+  const [checklistSearchKey, setChecklistSearchKey] = useState("clientName");
   const [checklistFilter, setChecklistFilter] = useState("all");
   const [summaryFrom, setSummaryFrom] = useState("");
   const [summaryTo, setSummaryTo] = useState("");
@@ -693,7 +708,12 @@ export default function App() {
   }
 
   if (page === "checklist") {
-    const filtered = bills.filter(b => checklistFilter === "all" ? true : checklistFilter === "paid" ? b.paid : !b.paid);
+    const keyMap = { clientName: "client_name", invoiceNo: "invoice_no", cabNo: "cab_no", clientGstin: "client_gstin", dutyType: "duty_type" };
+    const filtered = bills.filter(b => {
+      const matchFilter = checklistFilter === "all" ? true : checklistFilter === "paid" ? b.paid : !b.paid;
+      const matchSearch = !checklistSearch || (b[keyMap[checklistSearchKey]] || "").toLowerCase().includes(checklistSearch.toLowerCase());
+      return matchFilter && matchSearch;
+    });
     const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
     return (
       <div style={s}>
@@ -702,6 +722,18 @@ export default function App() {
           <span style={{ fontWeight: 500 }}>Payment Checklist</span>
         </div>
         <div style={{ padding: 12 }}>
+          {/* Search Bar */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <select style={{ ...inp, width: 130, fontSize: 12 }} value={checklistSearchKey} onChange={e => setChecklistSearchKey(e.target.value)}>
+              <option value="clientName">Client Name</option>
+              <option value="invoiceNo">Invoice No</option>
+              <option value="cabNo">Cab No</option>
+              <option value="clientGstin">Client GSTIN</option>
+              <option value="dutyType">Duty Type</option>
+            </select>
+            <input style={{ ...inp, flex: 1 }} placeholder="Search..." value={checklistSearch} onChange={e => setChecklistSearch(e.target.value)} />
+          </div>
+          {/* Filter Buttons */}
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {["all", "paid", "unpaid"].map(f => <button key={f} style={{ ...btn(checklistFilter === f ? "#185FA5" : "#eee", checklistFilter === f ? "#fff" : "#000"), fontSize: 12, textTransform: "capitalize" }} onClick={() => setChecklistFilter(f)}>{f}</button>)}
           </div>
