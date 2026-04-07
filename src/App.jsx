@@ -74,8 +74,10 @@ function BillA4({ b }) {
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "20pt", fontWeight: 700, color: "#185FA5" }}>TAX INVOICE</div>
               <div style={{ fontSize: "9pt" }}>GSTIN: {BUSINESS.gstin}</div>
-              <div style={{ fontSize: "10pt", fontWeight: 700 }}>Invoice No: {b.invoiceNo}</div>
-{b.dutySlipNo && <div style={{ fontSize: "9pt" }}>Duty Slip No: {b.dutySlipNo}</div>}
+              <div style={{ fontSize: "10pt", fontWeight: 700, display: "flex", flexWrap: "wrap", gap: "4px 16px", alignItems: "baseline", justifyContent: "flex-end" }}>
+                <span>Invoice No: {b.invoiceNo}</span>
+                <span style={{ fontWeight: 700 }}>Duty Slip No: {b.dutySlipNo || "—"}</span>
+              </div>
               <div style={{ fontSize: "9pt" }}>Date: {b.date}</div>
               {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
               <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
@@ -188,10 +190,16 @@ export default function App() {
       supabase.from("gst_types").select("*"),
     ]);
     if (billsData) {
-  setBills(billsData.map(b => ({ ...b, rows: b.rows || [], charges: b.charges || [], gstLines: b.gst_lines || [] })));
+  setBills(billsData.map(b => ({
+    ...b,
+    rows: b.rows || [],
+    charges: b.charges || [],
+    gstLines: b.gst_lines || [],
+    dutySlipNo: b.Duty_Slip_No || b.duty_slip_no || "",
+  })));
   if (billsData.length > 0) {
     const lastInvoice = parseInt(billsData[0].invoice_no) || 0;
-    const lastDutySlip = parseInt(billsData[0].duty_slip_no) || 0;
+    const lastDutySlip = parseInt(billsData[0].Duty_Slip_No ?? billsData[0].duty_slip_no) || 0;
     setEntries([emptyBill(DEFAULT_CHARGES, DEFAULT_GST)]);
     setEntries(es => es.map((e, i) => i === 0 ? { ...e, invoiceNo: String(lastInvoice + 1), dutySlipNo: String(lastDutySlip + 1) } : e));
   }
@@ -214,19 +222,36 @@ export default function App() {
     const valid = entries.every(e => e.invoiceNo && e.clientName);
     if (!valid) { alert("Please fill Invoice No and Client Name for all entries."); return; }
     setLoading(true);
-    for (const e of entries) {
-      await supabase.from("bills").insert({
-        invoice_no: e.invoiceNo, duty_slip_no: e.dutySlipNo, cab_no: e.cabNo, date: e.date,
-        client_name: e.clientName, client_phone: e.clientPhone,
-        client_address: e.clientAddress, client_gstin: e.clientGstin,
-        duty_type: e.dutyType, rows: e.rows, charges: e.charges,
-        gst_lines: e.gstLines, paid: e.paid || false,
-      });
+    try {
+      for (const e of entries) {
+        const { data, error } = await supabase.from("bills").insert({
+          invoice_no: e.invoiceNo,
+          cab_no: e.cabNo,
+          date: e.date,
+          client_name: e.clientName,
+          client_phone: e.clientPhone,
+          client_address: e.clientAddress,
+          client_gstin: e.clientGstin,
+          duty_type: e.dutyType,
+          duty_slip_no: e.dutySlipNo || "",
+          rows: e.rows,
+          charges: e.charges,
+          gst_lines: e.gstLines,
+          paid: e.paid || false,
+        });
+        if (error) {
+          console.error("Supabase insert error:", error);
+          return;
+        }
+      }
+      await loadData();
+      alert("Bills saved successfully!");
+      setEntries([emptyBill(chargeTypes, gstTypes)]);
+      setActiveEntry(0);
+      setPreviewMode(false);
+    } finally {
+      setLoading(false);
     }
-    await loadData();
-    setEntries([emptyBill(chargeTypes, gstTypes)]);
-    setActiveEntry(0); setPreviewMode(false); setLoading(false);
-    alert("Bills saved successfully!");
   };
 
   const togglePaid = async (id) => {
@@ -404,7 +429,7 @@ export default function App() {
       clientAddress: viewingBill.client_address,
       clientGstin: viewingBill.client_gstin,
       dutyType: viewingBill.duty_type,
-      dutySlipNo: viewingBill.duty_slip_no || "",
+      dutySlipNo: viewingBill.Duty_Slip_No || viewingBill.duty_slip_no || "",
       rows: viewingBill.rows || [],
       charges: viewingBill.charges || [],
       gstLines: viewingBill.gst_lines || [],
