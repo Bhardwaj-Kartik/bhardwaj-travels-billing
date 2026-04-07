@@ -15,8 +15,19 @@ const BUSINESS = {
 };
 
 const RATES_DEFAULT = [{ id: 1, name: "Etios Local", type: "per_km", rate: 12 }, { id: 2, name: "Innova Crysta Local", type: "per_km", rate: 18 }, { id: 3, name: "Dzire Local", type: "per_km", rate: 11 }, { id: 4, name: "Etios Outstation", type: "per_km", rate: 14 }];
-const DEFAULT_CHARGES = [{ id: "toll", label: "Toll / Parking / Entry Tax" }, { id: "extraKm", label: "Extra KM" }, { id: "extraHrs", label: "Extra Hours" }, { id: "da", label: "DA (Driver Allowance)" }, { id: "nightCharges", label: "Night Charges" }];
+
+// ✅ REMOVED Toll/Parking from DEFAULT_CHARGES
+const DEFAULT_CHARGES = [
+  { id: "extraKm", label: "Extra KM" },
+  { id: "extraHrs", label: "Extra Hours" },
+  { id: "da", label: "DA (Driver Allowance)" },
+  { id: "nightCharges", label: "Night Charges" }
+];
+
 const DEFAULT_GST = [{ id: "cgst", label: "CGST", pct: 2.5, enabled: true }, { id: "sgst", label: "SGST", pct: 2.5, enabled: true }, { id: "igst", label: "IGST", pct: 5, enabled: false }];
+
+// ✅ Default toll state
+const DEFAULT_TOLL = { mode: "none", value: "" };
 
 const UPI_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=upi://pay?pa=9815970070@CNRB%26pn=Bhardwaj%20Travels`;
 
@@ -38,18 +49,34 @@ function numToWords(n) {
 }
 
 const emptyRow = () => ({ id: Date.now() + Math.random(), date: "", particulars: "", rate: "", amount: "" });
-const emptyBill = (ct, gt) => ({ invoiceNo: "", dutySlipNo: "", cabNo: "", date: new Date().toISOString().slice(0, 10), clientName: "", clientPhone: "", clientAddress: "", clientGstin: "", dutyType: "local", rows: [emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()], charges: ct.map(c => ({ id: c.id, label: c.label, mode: "none", value: "" })), gstLines: gt.map(g => ({ ...g })), paid: false });
 
+// ✅ emptyBill now includes toll field
+const emptyBill = (ct, gt) => ({
+  invoiceNo: "", dutySlipNo: "", cabNo: "", date: new Date().toISOString().slice(0, 10),
+  clientName: "", clientPhone: "", clientAddress: "", clientGstin: "",
+  dutyType: "local",
+  rows: [emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()],
+  charges: ct.map(c => ({ id: c.id, label: c.label, mode: "none", value: "" })),
+  gstLines: gt.map(g => ({ ...g })),
+  toll: { ...DEFAULT_TOLL },
+  paid: false
+});
+
+// ✅ calcBill now includes toll AFTER GST (not part of subtotal)
 function calcBill(bill) {
   const rowTotal = (bill.rows || []).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
   const chargeTotal = (bill.charges || []).reduce((s, c) => s + (c.mode === "value" ? (parseFloat(c.value) || 0) : 0), 0);
   const subtotal = rowTotal + chargeTotal;
   const gstAmt = (bill.gstLines || []).filter(g => g.enabled).reduce((s, g) => s + subtotal * (parseFloat(g.pct) || 0) / 100, 0);
-  return { rowTotal, chargeTotal, subtotal, gstAmt, grand: subtotal + gstAmt };
+  // ✅ Toll is added AFTER GST, not part of subtotal
+  const toll = bill.toll || DEFAULT_TOLL;
+  const tollAmt = toll.mode === "value" ? (parseFloat(toll.value) || 0) : 0;
+  return { rowTotal, chargeTotal, subtotal, gstAmt, tollAmt, grand: subtotal + gstAmt + tollAmt };
 }
 
 function BillA4({ b }) {
   const c = calcBill(b);
+  const toll = b.toll || DEFAULT_TOLL;
   return (
     <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
       {/* WATERMARK */}
@@ -105,6 +132,7 @@ function BillA4({ b }) {
                   <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{r.amount ? `₹${parseFloat(r.amount).toFixed(2)}` : ""}</td>
                 </tr>
               ))}
+              {/* ✅ Additional charges (NO toll here) */}
               {(b.charges || []).filter(c => c.mode !== "none").map((c, i) => (
                 <tr key={i}><td colSpan={2} style={{ padding: "5px 8px", border: "0.5px solid #ddd" }}>{c.label}</td><td></td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{c.mode === "nil" ? "Nil" : `₹${parseFloat(c.value || 0).toFixed(2)}`}</td></tr>
               ))}
@@ -113,12 +141,35 @@ function BillA4({ b }) {
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ background: "#f0f0f0" }}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>Total</td><td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>₹{c.subtotal.toFixed(2)}</td></tr>
+              {/* Total (subtotal, no toll, no GST) */}
+              <tr style={{ background: "#f0f0f0" }}>
+                <td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>Total</td>
+                <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, border: "0.5px solid #ddd" }}>₹{c.subtotal.toFixed(2)}</td>
+              </tr>
+              {/* GST lines */}
               {(b.gstLines || []).filter(g => g.enabled).map(g => (
-                <tr key={g.id}><td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{g.label} @ {g.pct}%</td><td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>₹{(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</td></tr>
+                <tr key={g.id}>
+                  <td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>{g.label} @ {g.pct}%</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>₹{(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</td>
+                </tr>
               ))}
-              <tr style={{ background: "#185FA5", color: "#fff" }}><td colSpan={3} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>Grand Total</td><td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>₹{c.grand.toFixed(2)}</td></tr>
-              <tr><td colSpan={4} style={{ padding: "5px 8px", fontSize: "9pt", fontStyle: "italic", border: "0.5px solid #ddd" }}>Amount in words: {numToWords(c.grand)}</td></tr>
+              {/* ✅ Toll/Parking BELOW GST lines */}
+              {toll.mode !== "none" && (
+                <tr>
+                  <td colSpan={3} style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>Toll / Parking / Entry Tax</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", border: "0.5px solid #ddd" }}>
+                    {toll.mode === "nil" ? "Nil" : `₹${parseFloat(toll.value || 0).toFixed(2)}`}
+                  </td>
+                </tr>
+              )}
+              {/* Grand Total */}
+              <tr style={{ background: "#185FA5", color: "#fff" }}>
+                <td colSpan={3} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>Grand Total</td>
+                <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, border: "1px solid #185FA5" }}>₹{c.grand.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td colSpan={4} style={{ padding: "5px 8px", fontSize: "9pt", fontStyle: "italic", border: "0.5px solid #ddd" }}>Amount in words: {numToWords(c.grand)}</td>
+              </tr>
             </tfoot>
           </table>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9pt", marginTop: 10, alignItems: "flex-start" }}>
@@ -134,8 +185,8 @@ function BillA4({ b }) {
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "cursive", fontSize: "13pt", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700, textAlign: "right"  }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "9pt", textAlign: "right", marginTop: 8  }}>Prop.</div>
+              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700, textAlign: "right" }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "9pt", textAlign: "right", marginTop: 8 }}>Prop.</div>
             </div>
           </div>
           <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
@@ -190,22 +241,30 @@ export default function App() {
       supabase.from("gst_types").select("*"),
     ]);
     if (billsData) {
-  setBills(billsData.map(b => ({
-    ...b,
-    rows: b.rows || [],
-    charges: b.charges || [],
-    gstLines: b.gst_lines || [],
-    dutySlipNo: b.Duty_Slip_No || b.duty_slip_no || "",
-  })));
-  if (billsData.length > 0) {
-    const lastInvoice = parseInt(billsData[0].invoice_no) || 0;
-    const lastDutySlip = parseInt(billsData[0].Duty_Slip_No ?? billsData[0].duty_slip_no) || 0;
-    setEntries([emptyBill(DEFAULT_CHARGES, DEFAULT_GST)]);
-    setEntries(es => es.map((e, i) => i === 0 ? { ...e, invoiceNo: String(lastInvoice + 1), dutySlipNo: String(lastDutySlip + 1) } : e));
-  }
-}
+      setBills(billsData.map(b => ({
+        ...b,
+        rows: b.rows || [],
+        charges: (b.charges || []).filter(c => c.id !== "toll"), // ✅ strip old toll from charges if present
+        gstLines: b.gst_lines || [],
+        dutySlipNo: b.Duty_Slip_No || b.duty_slip_no || "",
+        // ✅ Load toll: check new field first, then fallback to old charges array
+        toll: b.toll || (() => {
+          const oldToll = (b.charges || []).find(c => c.id === "toll");
+          return oldToll ? { mode: oldToll.mode, value: oldToll.value } : { ...DEFAULT_TOLL };
+        })(),
+      })));
+      if (billsData.length > 0) {
+        const lastInvoice = parseInt(billsData[0].invoice_no) || 0;
+        const lastDutySlip = parseInt(billsData[0].Duty_Slip_No ?? billsData[0].duty_slip_no) || 0;
+        setEntries([emptyBill(DEFAULT_CHARGES, DEFAULT_GST)]);
+        setEntries(es => es.map((e, i) => i === 0 ? { ...e, invoiceNo: String(lastInvoice + 1), dutySlipNo: String(lastDutySlip + 1) } : e));
+      }
+    }
     if (ratesData && ratesData.length > 0) setRates(ratesData);
-    if (chargesData && chargesData.length > 0) setChargeTypes(chargesData);
+    if (chargesData && chargesData.length > 0) {
+      // ✅ Filter out toll from charge_types if it was stored there
+      setChargeTypes(chargesData.filter(c => c.id !== "toll"));
+    }
     if (gstData && gstData.length > 0) setGstTypes(gstData);
     setLoading(false);
   };
@@ -224,7 +283,7 @@ export default function App() {
     setLoading(true);
     try {
       for (const e of entries) {
-        const { data, error } = await supabase.from("bills").insert({
+        const { error } = await supabase.from("bills").insert({
           invoice_no: e.invoiceNo,
           cab_no: e.cabNo,
           date: e.date,
@@ -235,14 +294,12 @@ export default function App() {
           duty_type: e.dutyType,
           duty_slip_no: e.dutySlipNo || "",
           rows: e.rows,
-          charges: e.charges,
+          charges: e.charges, // ✅ No toll here anymore
           gst_lines: e.gstLines,
+          toll: e.toll || DEFAULT_TOLL, // ✅ Save toll separately
           paid: e.paid || false,
         });
-        if (error) {
-          console.error("Supabase insert error:", error);
-          return;
-        }
+        if (error) { console.error("Supabase insert error:", error); return; }
       }
       await loadData();
       alert("Bills saved successfully!");
@@ -331,6 +388,8 @@ export default function App() {
   const addEntry = () => { setEntries(es => [...es, emptyBill(chargeTypes, gstTypes)]); setActiveEntry(entries.length); };
   const upC = (ei, cid, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, charges: e.charges.map(c => c.id === cid ? { ...c, [k]: v } : c) } : e));
   const upG = (ei, gid, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, gstLines: e.gstLines.map(g => g.id === gid ? { ...g, [k]: v } : g) } : e));
+  // ✅ Update toll for a bill entry
+  const upToll = (ei, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, toll: { ...(e.toll || DEFAULT_TOLL), [k]: v } } : e));
 
   const filteredHistory = bills.filter(b => {
     if (!historySearch) return true;
@@ -431,8 +490,12 @@ export default function App() {
       dutyType: viewingBill.duty_type,
       dutySlipNo: viewingBill.Duty_Slip_No || viewingBill.duty_slip_no || "",
       rows: viewingBill.rows || [],
-      charges: viewingBill.charges || [],
-      gstLines: viewingBill.gst_lines || [],
+      charges: (viewingBill.charges || []).filter(c => c.id !== "toll"),
+      gstLines: viewingBill.gst_lines || viewingBill.gstLines || [],
+      toll: viewingBill.toll || (() => {
+        const oldToll = (viewingBill.charges || []).find(c => c.id === "toll");
+        return oldToll ? { mode: oldToll.mode, value: oldToll.value } : { ...DEFAULT_TOLL };
+      })(),
     };
     return (
       <div style={s}>
@@ -453,6 +516,7 @@ export default function App() {
   if (page === "create") {
     const bill = entries[activeEntry];
     const calc = calcBill(bill);
+    const toll = bill.toll || DEFAULT_TOLL;
     return (
       <div style={s}>
         <div style={{ background: "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -527,30 +591,30 @@ export default function App() {
               <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Bill Details</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <div>
-  <label style={lbl}>Invoice No *</label>
-  <div style={{ display: "flex", gap: 4 }}>
-    <input style={{ ...inp, flex: 1 }} value={bill.invoiceNo} onChange={e => upE(activeEntry, "invoiceNo", e.target.value)} placeholder="e.g. 1086" />
-    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "invoiceNo", String((parseInt(bill.invoiceNo) || 0) + 1))}>+</button>
-  </div>
-</div>
-<div>
-  <label style={lbl}>Duty Slip No</label>
-  <div style={{ display: "flex", gap: 4 }}>
-    <input style={{ ...inp, flex: 1 }} value={bill.dutySlipNo} onChange={e => upE(activeEntry, "dutySlipNo", e.target.value)} placeholder="e.g. 1086" />
-    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "dutySlipNo", String((parseInt(bill.dutySlipNo) || 0) + 1))}>+</button>
-  </div>
-</div>
+                  <label style={lbl}>Invoice No *</label>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input style={{ ...inp, flex: 1 }} value={bill.invoiceNo} onChange={e => upE(activeEntry, "invoiceNo", e.target.value)} placeholder="e.g. 1086" />
+                    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "invoiceNo", String((parseInt(bill.invoiceNo) || 0) + 1))}>+</button>
+                  </div>
+                </div>
+                <div>
+                  <label style={lbl}>Duty Slip No</label>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input style={{ ...inp, flex: 1 }} value={bill.dutySlipNo} onChange={e => upE(activeEntry, "dutySlipNo", e.target.value)} placeholder="e.g. 1086" />
+                    <button style={{ ...btn(), padding: "8px 10px", fontSize: 16 }} onClick={() => upE(activeEntry, "dutySlipNo", String((parseInt(bill.dutySlipNo) || 0) + 1))}>+</button>
+                  </div>
+                </div>
                 <div><label style={lbl}>Date *</label><input style={inp} type="date" value={bill.date} onChange={e => upE(activeEntry, "date", e.target.value)} /></div>
                 <div>
-  <label style={lbl}>Cab No</label>
-  <select style={inp} value={["PB01A7826","PB01C1838","PB01G1080"].includes(bill.cabNo) ? bill.cabNo : "custom"} onChange={e => { if (e.target.value === "custom") upE(activeEntry, "cabNo", ""); else upE(activeEntry, "cabNo", e.target.value); }}>
-    <option value="PB01A7826">PB01A7826</option>
-    <option value="PB01C1838">PB01C1838</option>
-    <option value="PB01G1080">PB01G1080</option>
-    <option value="custom">Custom...</option>
-  </select>
-  {!["PB01A7826","PB01C1838","PB01G1080"].includes(bill.cabNo) && <input style={{ ...inp, marginTop: 4 }} placeholder="Enter Cab No" value={bill.cabNo} onChange={e => upE(activeEntry, "cabNo", e.target.value)} />}
-</div>
+                  <label style={lbl}>Cab No</label>
+                  <select style={inp} value={["PB01A7826", "PB01C1838", "PB01G1080"].includes(bill.cabNo) ? bill.cabNo : "custom"} onChange={e => { if (e.target.value === "custom") upE(activeEntry, "cabNo", ""); else upE(activeEntry, "cabNo", e.target.value); }}>
+                    <option value="PB01A7826">PB01A7826</option>
+                    <option value="PB01C1838">PB01C1838</option>
+                    <option value="PB01G1080">PB01G1080</option>
+                    <option value="custom">Custom...</option>
+                  </select>
+                  {!["PB01A7826", "PB01C1838", "PB01G1080"].includes(bill.cabNo) && <input style={{ ...inp, marginTop: 4 }} placeholder="Enter Cab No" value={bill.cabNo} onChange={e => upE(activeEntry, "cabNo", e.target.value)} />}
+                </div>
                 <div><label style={lbl}>Duty Type</label>
                   <select style={inp} value={["local", "outstation"].includes(bill.dutyType) ? bill.dutyType : "custom"} onChange={e => { if (e.target.value === "custom") upE(activeEntry, "dutyType", "custom_"); else upE(activeEntry, "dutyType", e.target.value); }}>
                     <option value="local">Local Duty</option>
@@ -600,6 +664,7 @@ export default function App() {
               <button style={{ ...btn("#EAF3DE", "#3B6D11"), marginTop: 8, fontSize: 12 }} onClick={() => addRow(activeEntry)}>+ Add Row</button>
             </div>
 
+            {/* ✅ Additional Charges (NO toll here) */}
             {(() => {
               const ibc = inlineBillCharge[activeEntry] || {};
               const setIbc = val => setInlineBillCharge(p => ({ ...p, [activeEntry]: { ...(p[activeEntry] || {}), ...val } }));
@@ -636,6 +701,7 @@ export default function App() {
               );
             })()}
 
+            {/* GST Section */}
             {(() => {
               const gst = inlineBillGst[activeEntry] || {};
               const setGst = val => setInlineBillGst(p => ({ ...p, [activeEntry]: { ...(p[activeEntry] || {}), ...val } }));
@@ -680,11 +746,59 @@ export default function App() {
               );
             })()}
 
+            {/* ✅ NEW: Toll / Parking / Entry Tax — Separate section below GST */}
+            <div style={{ ...card, border: "1px solid #E8C97A", background: "#FFFDF0" }}>
+              <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#854F0B" }}>🚧 Toll / Parking / Entry Tax</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: "#666", minWidth: 170 }}>Toll / Parking / Entry Tax</span>
+                <select
+                  style={{ ...inp, width: 110, fontSize: 12 }}
+                  value={toll.mode}
+                  onChange={e => upToll(activeEntry, "mode", e.target.value)}
+                >
+                  <option value="none">None</option>
+                  <option value="nil">Nil</option>
+                  <option value="value">Enter ₹</option>
+                </select>
+                {toll.mode === "value" && (
+                  <input
+                    type="number"
+                    style={{ ...inp, width: 100, fontSize: 12 }}
+                    value={toll.value}
+                    onChange={e => upToll(activeEntry, "value", e.target.value)}
+                    placeholder="₹ Amount"
+                  />
+                )}
+                {toll.mode === "value" && toll.value && (
+                  <span style={{ fontSize: 11, color: "#854F0B", fontWeight: 500 }}>= ₹{parseFloat(toll.value || 0).toFixed(2)}</span>
+                )}
+                {toll.mode === "nil" && (
+                  <span style={{ fontSize: 11, color: "#854F0B" }}>Will show as Nil on bill</span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: "#999", marginTop: 8 }}>
+                ⚠️ Toll is added <strong>after GST</strong> and is not included in taxable amount.
+              </div>
+            </div>
+
+            {/* Summary */}
             <div style={{ ...card, background: "#E6F1FB", border: "1px solid #185FA5" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}><span>Subtotal</span><span>₹{calc.subtotal.toFixed(2)}</span></div>
               {(bill.gstLines || []).filter(g => g.enabled).map(g => (
                 <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}><span>{g.label} @ {g.pct}%</span><span>₹{(calc.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</span></div>
               ))}
+              {/* ✅ Show toll in summary if set */}
+              {toll.mode === "value" && toll.value && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}>
+                  <span>Toll / Parking / Entry Tax</span>
+                  <span>₹{parseFloat(toll.value || 0).toFixed(2)}</span>
+                </div>
+              )}
+              {toll.mode === "nil" && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}>
+                  <span>Toll / Parking / Entry Tax</span><span>Nil</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 500, borderTop: "1px solid #185FA5", paddingTop: 8, marginTop: 4 }}><span>Grand Total</span><span>₹{calc.grand.toFixed(2)}</span></div>
               <div style={{ fontSize: 11, color: "#185FA5", marginTop: 4 }}>{numToWords(calc.grand)}</div>
             </div>
@@ -779,7 +893,6 @@ export default function App() {
           <span style={{ fontWeight: 500 }}>Payment Checklist</span>
         </div>
         <div style={{ padding: 12 }}>
-          {/* Search Bar */}
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <select style={{ ...inp, width: 130, fontSize: 12 }} value={checklistSearchKey} onChange={e => setChecklistSearchKey(e.target.value)}>
               <option value="clientName">Client Name</option>
@@ -790,7 +903,6 @@ export default function App() {
             </select>
             <input style={{ ...inp, flex: 1 }} placeholder="Search..." value={checklistSearch} onChange={e => setChecklistSearch(e.target.value)} />
           </div>
-          {/* Filter Buttons */}
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {["all", "paid", "unpaid"].map(f => <button key={f} style={{ ...btn(checklistFilter === f ? "#185FA5" : "#eee", checklistFilter === f ? "#fff" : "#000"), fontSize: 12, textTransform: "capitalize" }} onClick={() => setChecklistFilter(f)}>{f}</button>)}
           </div>
