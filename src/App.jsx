@@ -131,7 +131,10 @@ function calcBill(bill) {
     s + subtotal * (parseFloat(g.pct) || 0) / 100, 0);
   const toll = bill.toll || DEFAULT_TOLL;
   const tollAmt = toll.mode === "value" ? (parseFloat(toll.value) || 0) : 0;
-  return { rowTotal, chargeTotal, subtotal, gstAmt, tollAmt, grand: subtotal + gstAmt + tollAmt };
+  const beforeRounding = subtotal + gstAmt + tollAmt;
+  const grandRounded = Math.ceil(beforeRounding);
+  const roundingAmt = parseFloat((grandRounded - beforeRounding).toFixed(2));
+  return { rowTotal, chargeTotal, subtotal, gstAmt, tollAmt, beforeRounding, roundingAmt, grand: grandRounded };
 }
 
 // ─── BILL A4 PRINT COMPONENT ──────────────────────────────────────────────────
@@ -164,8 +167,8 @@ function BillA4({ b }) {
       if (hasKm && lc.extraKm > 0) {
         printRows.push({
           dateRange: "",
-          particulars: `[ Extra ${lc.extraKm} KM @ ₹${lim.extraKmRate}/km ]`,
-          rate: "",
+          particulars: `Extra ${lc.extraKm} KM`,
+          rate: `₹${lim.extraKmRate}/km`,
           amount: `₹${lc.extraKmAmt.toFixed(2)}`,
         });
       }
@@ -173,8 +176,8 @@ function BillA4({ b }) {
       if (hasHrs && lc.extraHrs > 0) {
         printRows.push({
           dateRange: "",
-          particulars: `[ Extra ${Math.ceil(lc.extraHrs)} Hour${Math.ceil(lc.extraHrs) > 1 ? "s" : ""} @ ₹${lim.extraHrsRate}/hr ]`,
-          rate: "",
+          particulars: `Extra ${Math.ceil(lc.extraHrs)} Hour${Math.ceil(lc.extraHrs) > 1 ? "s" : ""}`,
+          rate: `₹${lim.extraHrsRate}/hr`,
           amount: `₹${lc.extraHrsAmt.toFixed(2)}`,
         });
       }
@@ -285,6 +288,12 @@ function BillA4({ b }) {
                 <tr>
                   <td colSpan={3} style={td({ textAlign: "right" })}>Toll / Parking / Entry Tax</td>
                   <td style={td({ textAlign: "right" })}>{toll.mode === "nil" ? "Nil" : `₹${parseFloat(toll.value || 0).toFixed(2)}`}</td>
+                </tr>
+              )}
+              {c.roundingAmt > 0 && (
+                <tr>
+                  <td colSpan={3} style={td({ textAlign: "right" })}>Rounded Off (+)</td>
+                  <td style={td({ textAlign: "right" })}>₹{c.roundingAmt.toFixed(2)}</td>
                 </tr>
               )}
               <tr style={{ background: "#185FA5", color: "#fff" }}>
@@ -1012,6 +1021,7 @@ export default function App() {
               ))}
               {toll.mode === "value" && toll.value && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}><span>Toll / Parking / Entry Tax</span><span>₹{parseFloat(toll.value || 0).toFixed(2)}</span></div>}
               {toll.mode === "nil" && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}><span>Toll / Parking / Entry Tax</span><span>Nil</span></div>}
+              {calc.roundingAmt > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#555" }}><span>Rounded Off (+)</span><span>₹{calc.roundingAmt.toFixed(2)}</span></div>}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 500, borderTop: "1px solid #185FA5", paddingTop: 8, marginTop: 4 }}><span>Grand Total</span><span>₹{calc.grand.toFixed(2)}</span></div>
               <div style={{ fontSize: 11, color: "#185FA5", marginTop: 4 }}>{numToWords(calc.grand)}</div>
             </div>
