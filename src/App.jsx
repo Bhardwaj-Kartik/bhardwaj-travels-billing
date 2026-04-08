@@ -11,7 +11,7 @@ const BUSINESS = {
   address: "#218-O, Victoria City / Enclave, Bhabat, Zirakpur, Mohali, Punjab-140603",
   phones: ["94175-66648", "98159-70070"], email: "bhardwajtravels999@gmail.com",
   gstin: "03BJZPB5991C1Z1",
-  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travel's", upi: "9815970070@CNRB" },
+  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travels", upi: "9815970070@CNRB" },
   terms: ["E. & O.E.", "All disputes subject to Mohali jurisdiction.", "Kilometer & Time will be charged garage to garage.", "Luggage/Goods being carried at owner's risk."]
 };
 
