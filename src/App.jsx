@@ -159,7 +159,7 @@ function BillA4({ b }) {
       // Package row
       printRows.push({
         dateRange,
-        particulars: (r.particulars ? r.particulars + "\n" : "") + `[ ${limitLabel} Limit ]`,
+        particulars: (r.particulars ? r.particulars + "\n" : "") + `${limitLabel} Limit`,
         rate: lim.packageRate ? `₹${parseFloat(lim.packageRate).toFixed(2)}` : "",
         amount: lc.packageAmt > 0 ? `₹${lc.packageAmt.toFixed(2)}` : "",
       });
@@ -202,22 +202,22 @@ function BillA4({ b }) {
     });
   });
 
-  const emptyNeeded = Math.max(0, 9 - printRows.length);
+  const emptyNeeded = Math.max(0, 5 - printRows.length);
 
-  const td = (extra = {}) => ({ padding: "5px 8px", border: "1.5px solid #444", ...extra });
+  const td = (extra = {}) => ({ padding: "4px 7px", border: "1.5px solid #444", ...extra });
 
   return (
-    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
+    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
         <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.07 }} />
       </div>
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ background: "#185FA5", height: 8 }} />
-        <div style={{ padding: "14px 18px" }}>
+        <div style={{ padding: "10px 14px" }}>
           {/* Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <img src={logo} style={{ width: 80, height: 80, objectFit: "contain", flexShrink: 0 }} />
+              <img src={logo} style={{ width: 68, height: 68, objectFit: "contain", flexShrink: 0 }} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
                 <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
@@ -240,7 +240,7 @@ function BillA4({ b }) {
           </div>
 
           {/* Bill To */}
-          <div style={{ borderTop: "2px solid #185FA5", borderBottom: "1px solid #185FA5", padding: "7px 0", marginBottom: 10 }}>
+          <div style={{ borderTop: "2px solid #185FA5", borderBottom: "1px solid #185FA5", padding: "5px 0", marginBottom: 8 }}>
             <div style={{ fontSize: "9pt", color: "#555" }}>Bill To:</div>
             <div style={{ fontWeight: 700, fontSize: "13pt" }}>{b.clientName}</div>
             {b.clientPhone && <div style={{ fontSize: "9pt" }}>{b.clientPhone}</div>}
@@ -582,9 +582,25 @@ export default function App() {
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pages = billsRef.current.querySelectorAll(".bill-page");
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 3, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, windowWidth: 794 });
+        const el = pages[i];
+        const actualHeight = el.scrollHeight;
+        const canvas = await html2canvas(el, {
+          scale: 3, useCORS: true, backgroundColor: "#ffffff",
+          width: 794, height: actualHeight, windowWidth: 794,
+        });
+        const imgData = canvas.toDataURL("image/png");
+        const pdfWidth = 210;
+        const pdfHeight = 297; // always A4
+        // Scale image to fit within A4 — compresses if taller, fits perfectly if shorter
+        const imgAspect = actualHeight / 794;
+        const imgHeightInMm = imgAspect * pdfWidth;
+        const scale = imgHeightInMm > pdfHeight ? pdfHeight / imgHeightInMm : 1;
+        const finalW = pdfWidth * scale;
+        const finalH = imgHeightInMm * scale;
+        const offsetX = (pdfWidth - finalW) / 2;
+        const offsetY = (pdfHeight - finalH) / 2;
         if (i > 0) pdf.addPage();
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+        pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
       }
       pdf.save(`BhardwajTravels_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e) { alert("PDF generation failed."); }
@@ -594,9 +610,24 @@ export default function App() {
   const generateSinglePDF = async (invoiceNo) => {
     if (!viewBillRef.current) return; setPdfLoading(true);
     try {
+      const el = viewBillRef.current;
+      const actualHeight = el.scrollHeight;
+      const canvas = await html2canvas(el, {
+        scale: 3, useCORS: true, backgroundColor: "#ffffff",
+        width: 794, height: actualHeight, windowWidth: 794,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdfWidth = 210;
+      const pdfHeight = 297; // always A4
+      const imgAspect = actualHeight / 794;
+      const imgHeightInMm = imgAspect * pdfWidth;
+      const scale = imgHeightInMm > pdfHeight ? pdfHeight / imgHeightInMm : 1;
+      const finalW = pdfWidth * scale;
+      const finalH = imgHeightInMm * scale;
+      const offsetX = (pdfWidth - finalW) / 2;
+      const offsetY = (pdfHeight - finalH) / 2;
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const canvas = await html2canvas(viewBillRef.current, { scale: 3, useCORS: true, backgroundColor: "#ffffff", width: 794, height: 1123, windowWidth: 794 });
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+      pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
       pdf.save(`BhardwajTravels_${invoiceNo}.pdf`);
     } catch (e) { alert("PDF generation failed."); }
     setPdfLoading(false);
