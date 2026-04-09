@@ -11,7 +11,7 @@ const BUSINESS = {
   address: "#218-O, Victoria City / Enclave, Bhabat, Zirakpur, Mohali, Punjab-140603",
   phones: ["94175-66648", "98159-70070"], email: "bhardwajtravels999@gmail.com",
   gstin: "03BJZPB5991C1Z1",
-  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travels", upi: "9815970070@CNRB" },
+  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travel's", upi: "9815970070@CNRB" },
   terms: ["E. & O.E.", "All disputes subject to Mohali jurisdiction.", "Kilometer & Time will be charged garage to garage.", "Luggage/Goods being carried at owner's risk."]
 };
 
@@ -29,8 +29,8 @@ const DEFAULT_CHARGES = [
 ];
 
 const DEFAULT_GST = [
-  { id: "cgst", label: "CGST", pct: 2.5, enabled: true },
-  { id: "sgst", label: "SGST", pct: 2.5, enabled: true },
+  { id: "cgst", label: "CGST", pct: 2.5, enabled: false },
+  { id: "sgst", label: "SGST", pct: 2.5, enabled: false },
   { id: "igst", label: "IGST", pct: 5, enabled: false }
 ];
 
@@ -60,6 +60,14 @@ function timeToHours(t) {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
   return (h || 0) + (m || 0) / 60;
+}
+
+// Format ISO date (yyyy-mm-dd) to dd/mm/yyyy
+function fmtDate(d) {
+  if (!d) return "";
+  const parts = d.split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
 }
 
 const emptyLimit = () => ({
@@ -146,7 +154,7 @@ function BillA4({ b }) {
   const printRows = [];
   (b.rows || []).forEach(r => {
     const dateRange = r.dateFrom
-      ? (r.dateTo && r.dateTo !== r.dateFrom ? `${r.dateFrom} to ${r.dateTo}` : r.dateFrom)
+      ? (r.dateTo && r.dateTo !== r.dateFrom ? `${fmtDate(r.dateFrom)} to ${fmtDate(r.dateTo)}` : fmtDate(r.dateFrom))
       : "";
 
     if (r.useLimit && r.limit) {
@@ -204,12 +212,12 @@ function BillA4({ b }) {
 
   const emptyNeeded = Math.max(0, 5 - printRows.length);
 
-  const td = (extra = {}) => ({ padding: "4px 7px", border: "1.5px solid #444", ...extra });
+  const td = (extra = {}) => ({ padding: "4px 7px", border: "0.75px solid #999", ...extra });
 
   return (
     <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
-        <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.07 }} />
+        <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.13 }} />
       </div>
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ background: "#185FA5", height: 8 }} />
@@ -233,7 +241,7 @@ function BillA4({ b }) {
                 <span>Invoice No: {b.invoiceNo}</span>
                 <span>Duty Slip No: {b.dutySlipNo || "—"}</span>
               </div>
-              <div style={{ fontSize: "9pt" }}>Date: {b.date}</div>
+              <div style={{ fontSize: "9pt" }}>Date: {fmtDate(b.date)}</div>
               {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
               <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
             </div>
@@ -253,7 +261,7 @@ function BillA4({ b }) {
             <thead>
               <tr style={{ background: "#185FA5", color: "#fff" }}>
                 {["Date of Travel", "Particulars", "Rate", "Amount (₹)"].map((h, i) => (
-                  <th key={i} style={{ padding: "6px 8px", textAlign: i > 1 ? "right" : "left", border: "1.5px solid #185FA5", fontWeight: 600 }}>{h}</th>
+                  <th key={i} style={{ padding: "6px 8px", textAlign: i > 1 ? "right" : "left", border: "0.75px solid #185FA5", fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -297,8 +305,8 @@ function BillA4({ b }) {
                 </tr>
               )}
               <tr style={{ background: "#185FA5", color: "#fff" }}>
-                <td colSpan={3} style={td({ textAlign: "right", fontWeight: 700, border: "1.5px solid #185FA5" })}>Grand Total</td>
-                <td style={td({ textAlign: "right", fontWeight: 700, border: "1.5px solid #185FA5" })}>₹{c.grand.toFixed(2)}</td>
+                <td colSpan={3} style={td({ textAlign: "right", fontWeight: 700, border: "0.75px solid #185FA5" })}>Grand Total</td>
+                <td style={td({ textAlign: "right", fontWeight: 700, border: "0.75px solid #185FA5" })}>₹{c.grand.toFixed(2)}</td>
               </tr>
               <tr>
                 <td colSpan={4} style={td({ fontSize: "9pt", fontStyle: "italic" })}>Amount in words: {numToWords(c.grand)}</td>
@@ -483,6 +491,7 @@ export default function App() {
   const [inlineBillGst, setInlineBillGst] = useState({});
   const [pdfLoading, setPdfLoading] = useState(false);
   const [viewingBill, setViewingBill] = useState(null);
+  const [editingBillId, setEditingBillId] = useState(null);
   const billsRef = useRef();
   const viewBillRef = useRef();
 
@@ -560,6 +569,29 @@ export default function App() {
     } finally { setLoading(false); }
   };
 
+  const updateBill = async () => {
+    const e = entries[activeEntry];
+    if (!e.invoiceNo || !e.clientName) { alert("Please fill Invoice No and Client Name."); return; }
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("bills").update({
+        invoice_no: e.invoiceNo, cab_no: e.cabNo, date: e.date,
+        client_name: e.clientName, client_phone: e.clientPhone,
+        client_address: e.clientAddress, client_gstin: e.clientGstin,
+        duty_type: e.dutyType, duty_slip_no: e.dutySlipNo || "",
+        rows: e.rows, charges: e.charges,
+        gst_lines: e.gstLines, toll: e.toll || DEFAULT_TOLL,
+      }).eq("id", editingBillId);
+      if (error) { alert("Update failed: " + error.message); return; }
+      await loadData();
+      alert("Bill updated successfully!");
+      setEditingBillId(null);
+      setEntries([emptyBill(chargeTypes, gstTypes)]);
+      setActiveEntry(0); setPreviewMode(false);
+      setPage("history");
+    } finally { setLoading(false); }
+  };
+
   const togglePaid = async (id) => {
     const bill = bills.find(b => b.id === id);
     await supabase.from("bills").update({ paid: !bill.paid }).eq("id", id);
@@ -598,7 +630,7 @@ export default function App() {
         const finalW = pdfWidth * scale;
         const finalH = imgHeightInMm * scale;
         const offsetX = (pdfWidth - finalW) / 2;
-        const offsetY = (pdfHeight - finalH) / 2;
+        const offsetY = 0; // top-align, no blank space above
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
       }
@@ -625,7 +657,7 @@ export default function App() {
       const finalW = pdfWidth * scale;
       const finalH = imgHeightInMm * scale;
       const offsetX = (pdfWidth - finalW) / 2;
-      const offsetY = (pdfHeight - finalH) / 2;
+      const offsetY = 0; // top-align, no blank space above
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
       pdf.save(`BhardwajTravels_${invoiceNo}.pdf`);
@@ -762,12 +794,13 @@ export default function App() {
 
     return (
       <div style={s}>
-        <div style={{ background: "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), padding: "4px 10px" }} onClick={() => { setPreviewMode(false); setPage("home"); }}>← Back</button>
-          <span style={{ fontWeight: 500 }}>Create Bill</span>
+        <div style={{ background: editingBillId ? "#3B6D11" : "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), padding: "4px 10px" }} onClick={() => { setPreviewMode(false); if (editingBillId) { setEditingBillId(null); setEntries([emptyBill(chargeTypes, gstTypes)]); setPage("history"); } else { setPage("home"); } }}>← Back</button>
+          <span style={{ fontWeight: 500 }}>{editingBillId ? "✏️ Editing Bill" : "Create Bill"}</span>
+          {editingBillId && <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: 10 }}>Edit Mode</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), fontSize: 12 }} onClick={() => setShowRates(!showRates)}>⚙ Settings</button>
-            <button style={{ ...btn("#fff", "#185FA5"), fontSize: 12 }} onClick={() => setPreviewMode(!previewMode)}>{previewMode ? "Edit" : "Preview"}</button>
+            <button style={{ ...btn("#fff", editingBillId ? "#3B6D11" : "#185FA5"), fontSize: 12 }} onClick={() => setPreviewMode(!previewMode)}>{previewMode ? "Edit" : "Preview"}</button>
           </div>
         </div>
 
@@ -830,6 +863,11 @@ export default function App() {
           ))}
           <button style={{ ...btn("#EAF3DE", "#3B6D11"), fontSize: 12, whiteSpace: "nowrap" }} onClick={addEntry}>+ Add Entry</button>
         </div>
+        {editingBillId && (
+          <div style={{ margin: "0 12px 8px", background: "#EAF7EA", border: "1px solid #3B6D11", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#3B6D11" }}>
+            ✏️ You are editing a saved bill. Click <b>Update Bill</b> to save changes.
+          </div>
+        )}
 
         {!previewMode ? (
           <div style={{ padding: "0 12px 80px" }}>
@@ -1059,7 +1097,7 @@ export default function App() {
 
             <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
               <button style={{ ...btn(), flex: 1 }} onClick={() => setPreviewMode(true)}>Preview Bill</button>
-              <button style={{ ...btn("#3B6D11"), flex: 1 }} onClick={saveBill}>{loading ? "Saving..." : "Save All Bills"}</button>
+              <button style={{ ...btn("#3B6D11"), flex: 1 }} onClick={editingBillId ? updateBill : saveBill}>{loading ? "Saving..." : editingBillId ? "Update Bill" : "Save All Bills"}</button>
             </div>
           </div>
         ) : (
@@ -1067,7 +1105,7 @@ export default function App() {
             <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button style={{ ...btn("#eee", "#000") }} onClick={() => setPreviewMode(false)}>← Edit</button>
               <button style={{ ...btn(), opacity: pdfLoading ? 0.6 : 1 }} onClick={generatePDF} disabled={pdfLoading}>{pdfLoading ? "Generating..." : "Download PDF"}</button>
-              <button style={btn("#3B6D11")} onClick={saveBill}>{loading ? "Saving..." : "Save Bills"}</button>
+              <button style={btn("#3B6D11")} onClick={editingBillId ? updateBill : saveBill}>{loading ? "Saving..." : editingBillId ? "Update Bill" : "Save Bills"}</button>
             </div>
             <div ref={billsRef}>
               {entries.map((b, bi) => <div key={bi} className="bill-page" style={{ marginBottom: 24 }}><BillA4 b={b} /></div>)}
@@ -1119,6 +1157,25 @@ export default function App() {
                       <div style={{ fontWeight: 500, fontSize: 13 }}>₹{c.grand.toFixed(2)}</div>
                       <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                         <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10 }} onClick={() => openBill(b, "history")}>👁 View</button>
+                        <button style={{ ...btn("#EAF3DE", "#3B6D11"), padding: "2px 6px", fontSize: 10 }} onClick={() => {
+                          const editEntry = {
+                            invoiceNo: b.invoice_no, dutySlipNo: b.duty_slip_no || "",
+                            cabNo: b.cab_no, date: b.date,
+                            clientName: b.client_name, clientPhone: b.client_phone || "",
+                            clientAddress: b.client_address || "", clientGstin: b.client_gstin || "",
+                            dutyType: b.duty_type,
+                            rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
+                            charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+                            gstLines: b.gst_lines || b.gstLines || [],
+                            toll: b.toll || DEFAULT_TOLL,
+                            paid: b.paid || false,
+                          };
+                          setEditingBillId(b.id);
+                          setEntries([editEntry]);
+                          setActiveEntry(0);
+                          setPreviewMode(false);
+                          setPage("create");
+                        }}>✏️ Edit</button>
                         <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "2px 6px", fontSize: 10 }} onClick={() => deleteBill(b.id)}>Delete</button>
                       </div>
                     </div>
