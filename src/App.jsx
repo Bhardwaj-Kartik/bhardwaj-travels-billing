@@ -75,6 +75,7 @@ const emptyLimit = () => ({
   kmInputMode: "direct", totalKm: "", odomFinal: "", odomInitial: "",
   hrsInputMode: "direct", totalHrs: "", timeFinal: "", timeInitial: "",
   packageRate: "", extraKmRate: "", extraHrsRate: "",
+  packageRateMode: "flat", // "flat" = exact total price, "per_km" = rate×kmLimit per day
 });
 
 const emptyRow = () => ({
@@ -96,9 +97,20 @@ const emptyBill = (ct, gt) => ({
   paid: false,
 });
 
+// Calculate number of days between two ISO date strings (inclusive)
+function calcDays(dateFrom, dateTo) {
+  if (!dateFrom) return 1;
+  const from = new Date(dateFrom);
+  const to = dateTo && dateTo !== dateFrom ? new Date(dateTo) : new Date(dateFrom);
+  const diff = Math.round((to - from) / (1000 * 60 * 60 * 24));
+  return Math.max(1, diff + 1); // inclusive, minimum 1
+}
+
 // ─── LIMIT CALCULATION ────────────────────────────────────────────────────────
-function calcLimit(lim) {
-  if (!lim) return { packageAmt: 0, extraKmAmt: 0, extraHrsAmt: 0, totalAmt: 0, extraKm: 0, extraHrs: 0, totalKm: 0, totalHrs: 0 };
+function calcLimit(lim, dateFrom, dateTo) {
+  if (!lim) return { packageAmt: 0, extraKmAmt: 0, extraHrsAmt: 0, totalAmt: 0, extraKm: 0, extraHrs: 0, totalKm: 0, totalHrs: 0, days: 1, oneDayPackageAmt: 0 };
+
+  const days = calcDays(dateFrom, dateTo);
 
   let totalKm = 0;
   if (lim.kmLimit !== "none") {
@@ -120,18 +132,29 @@ function calcLimit(lim) {
   const extraKmRate = parseFloat(lim.extraKmRate) || 0;
   const extraHrsRate = parseFloat(lim.extraHrsRate) || 0;
 
-  const extraKm = lim.kmLimit !== "none" ? Math.max(0, totalKm - kmLimit) : 0;
-  const extraHrs = lim.hrsLimit !== "none" ? Math.max(0, totalHrs - hrsLimit) : 0;
+  // Determine one-day package amount based on rate mode
+  let oneDayPackageAmt = 0;
+  if (lim.packageRateMode === "per_km") {
+    // rate is per km, multiply by km limit to get one-day price
+    oneDayPackageAmt = packageRate * kmLimit;
+  } else {
+    // flat: the entered rate is already the per-day total price
+    oneDayPackageAmt = packageRate;
+  }
+  const packageAmt = oneDayPackageAmt * days;
+
+  const extraKm = lim.kmLimit !== "none" ? Math.max(0, totalKm - kmLimit * days) : 0;
+  const extraHrs = lim.hrsLimit !== "none" ? Math.max(0, totalHrs - hrsLimit * days) : 0;
   const extraKmAmt = extraKm * extraKmRate;
   const extraHrsAmt = Math.ceil(extraHrs) * extraHrsRate;
 
-  return { packageAmt: packageRate, extraKmAmt, extraHrsAmt, totalAmt: packageRate + extraKmAmt + extraHrsAmt, extraKm, extraHrs, totalKm, totalHrs };
+  return { packageAmt, extraKmAmt, extraHrsAmt, totalAmt: packageAmt + extraKmAmt + extraHrsAmt, extraKm, extraHrs, totalKm, totalHrs, days, oneDayPackageAmt };
 }
 
 // ─── BILL CALCULATION ─────────────────────────────────────────────────────────
 function calcBill(bill) {
   const rowTotal = (bill.rows || []).reduce((s, r) =>
-    s + (r.useLimit ? calcLimit(r.limit).totalAmt : (parseFloat(r.amount) || 0)), 0);
+    s + (r.useLimit ? calcLimit(r.limit, r.dateFrom, r.dateTo).totalAmt : (parseFloat(r.amount) || 0)), 0);
   const chargeTotal = (bill.charges || []).reduce((s, c) =>
     s + (c.mode === "value" ? (parseFloat(c.value) || 0) : 0), 0);
   const subtotal = rowTotal + chargeTotal;
@@ -158,17 +181,26 @@ function BillA4({ b }) {
       : "";
 
     if (r.useLimit && r.limit) {
-      const lc = calcLimit(r.limit);
+      const lc = calcLimit(r.limit, r.dateFrom, r.dateTo);
       const lim = r.limit;
       const hasKm = lim.kmLimit !== "none";
       const hasHrs = lim.hrsLimit !== "none";
       const limitLabel = [hasHrs ? `${lim.hrsLimit} Hours` : null, hasKm ? `${lim.kmLimit} KM` : null].filter(Boolean).join(" + ");
+      const daysLabel = lc.days > 1 ? ` for ${lc.days} Days` : "";
+
+      // Rate display: flat shows total per-day price, per_km shows rate×km
+      let rateDisplay = "";
+      if (lim.packageRateMode === "per_km" && lim.packageRate && hasKm) {
+        rateDisplay = `₹${parseFloat(lim.packageRate).toFixed(2)}/km × ${lim.kmLimit}km${lc.days > 1 ? ` × ${lc.days}d` : ""}`;
+      } else if (lim.packageRate) {
+        rateDisplay = `₹${lc.oneDayPackageAmt.toFixed(2)}${lc.days > 1 ? `/day × ${lc.days}` : ""}`;
+      }
 
       // Package row
       printRows.push({
         dateRange,
-        particulars: (r.particulars ? r.particulars + "\n" : "") + `${limitLabel} Limit`,
-        rate: lim.packageRate ? `₹${parseFloat(lim.packageRate).toFixed(2)}` : "",
+        particulars: (r.particulars ? r.particulars + "\n" : "") + `${limitLabel} Limit${daysLabel}`,
+        rate: rateDisplay,
         amount: lc.packageAmt > 0 ? `₹${lc.packageAmt.toFixed(2)}` : "",
       });
       // Extra KM row
@@ -355,8 +387,26 @@ function LimitEditor({ lim, onChange, calcResult }) {
 
       {/* Package Rate */}
       <div style={sec}>
-        <label style={{ ...lbl2, color: "#185FA5", fontWeight: 600 }}>Package Rate (₹)</label>
-        <input style={inp2} type="number" placeholder="e.g. 1200" value={lim.packageRate} onChange={e => onChange("packageRate", e.target.value)} />
+        <label style={{ ...lbl2, color: "#185FA5", fontWeight: 600, marginBottom: 6 }}>Package Rate Mode</label>
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <button style={modeBtn((lim.packageRateMode || "flat") === "flat")} onClick={() => onChange("packageRateMode", "flat")}>Flat Price (₹ per day)</button>
+          <button style={modeBtn(lim.packageRateMode === "per_km")} onClick={() => onChange("packageRateMode", "per_km")}>Per KM Rate (₹/km)</button>
+        </div>
+        {lim.packageRateMode === "per_km"
+          ? <>
+              <label style={lbl2}>Rate per KM (₹/km) — will × KM limit for price</label>
+              <input style={inp2} type="number" placeholder="e.g. 15" value={lim.packageRate} onChange={e => onChange("packageRate", e.target.value)} />
+              {lim.packageRate && lim.kmLimit !== "none" && lim.kmLimit && (
+                <div style={{ marginTop: 5, fontSize: 11, color: "#185FA5" }}>
+                  ₹{parseFloat(lim.packageRate).toFixed(2)}/km × {lim.kmLimit} km = <b>₹{(parseFloat(lim.packageRate) * parseFloat(lim.kmLimit)).toFixed(2)}/day</b>
+                </div>
+              )}
+            </>
+          : <>
+              <label style={lbl2}>Package Price (₹ per day total)</label>
+              <input style={inp2} type="number" placeholder="e.g. 1200" value={lim.packageRate} onChange={e => onChange("packageRate", e.target.value)} />
+            </>
+        }
       </div>
 
       {/* KM Limit */}
@@ -450,7 +500,7 @@ function LimitEditor({ lim, onChange, calcResult }) {
       {/* Live Total Bar */}
       {calcResult && (
         <div style={{ background: "#185FA5", borderRadius: 8, padding: "10px 14px", color: "#fff", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 13 }}>
-          <span>Package: <b>₹{calcResult.packageAmt.toFixed(2)}</b></span>
+          <span>Package: <b>₹{calcResult.packageAmt.toFixed(2)}</b>{calcResult.days > 1 && <span style={{ opacity: 0.8, fontSize: 11 }}> (₹{calcResult.oneDayPackageAmt.toFixed(2)}/day × {calcResult.days} days)</span>}</span>
           {calcResult.extraKmAmt > 0 && <span>+ Extra KM: <b>₹{calcResult.extraKmAmt.toFixed(2)}</b></span>}
           {calcResult.extraHrsAmt > 0 && <span>+ Extra Hrs: <b>₹{calcResult.extraHrsAmt.toFixed(2)}</b></span>}
           <span style={{ fontWeight: 700, fontSize: 14 }}>= ₹{calcResult.totalAmt.toFixed(2)}</span>
@@ -531,6 +581,8 @@ export default function App() {
         const lastInvoice = parseInt(billsData[0].invoice_no) || 0;
         const lastDutySlip = parseInt(billsData[0].duty_slip_no) || 0;
         setEntries([{ ...emptyBill(DEFAULT_CHARGES, DEFAULT_GST), invoiceNo: String(lastInvoice + 1), dutySlipNo: String(lastDutySlip + 1) }]);
+      } else {
+        setEntries([{ ...emptyBill(DEFAULT_CHARGES, DEFAULT_GST), invoiceNo: "1", dutySlipNo: "1" }]);
       }
     }
     if (ratesData && ratesData.length > 0) setRates(ratesData);
@@ -564,7 +616,7 @@ export default function App() {
       }
       await loadData();
       alert("Bills saved successfully!");
-      setEntries([emptyBill(chargeTypes, gstTypes)]);
+      // loadData already resets entries with next invoice/duty slip numbers
       setActiveEntry(0); setPreviewMode(false);
     } finally { setLoading(false); }
   };
@@ -583,7 +635,18 @@ export default function App() {
         gst_lines: e.gstLines, toll: e.toll || DEFAULT_TOLL,
       }).eq("id", editingBillId);
       if (error) { alert("Update failed: " + error.message); return; }
-      await loadData();
+      // Reload bills list only (not entries — we handle navigation manually)
+      const { data: billsData } = await supabase.from("bills").select("*").order("saved_at", { ascending: false });
+      if (billsData) {
+        setBills(billsData.map(b => ({
+          ...b,
+          rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
+          charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+          gstLines: b.gst_lines || [],
+          dutySlipNo: b.duty_slip_no || "",
+          toll: b.toll || DEFAULT_TOLL,
+        })));
+      }
       alert("Bill updated successfully!");
       setEditingBillId(null);
       setEntries([emptyBill(chargeTypes, gstTypes)]);
@@ -677,7 +740,14 @@ export default function App() {
   const upLimit = (ei, ri, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, rows: e.rows.map((r, j) => j === ri ? { ...r, limit: { ...(r.limit || emptyLimit()), [k]: v } } : r) } : e));
   const addRowAt = (idx, pos) => setEntries(es => es.map((e, i) => i === idx ? { ...e, rows: pos === "top" ? [emptyRow(), ...e.rows] : [...e.rows, emptyRow()] } : e));
   const remRow = (ei, ri) => setEntries(es => es.map((e, i) => i === ei ? { ...e, rows: e.rows.filter((_, j) => j !== ri) } : e));
-  const addEntry = () => { setEntries(es => [...es, emptyBill(chargeTypes, gstTypes)]); setActiveEntry(entries.length); };
+  const addEntry = () => {
+    setEntries(es => {
+      const maxInv = Math.max(0, ...es.map(e => parseInt(e.invoiceNo) || 0));
+      const maxDuty = Math.max(0, ...es.map(e => parseInt(e.dutySlipNo) || 0));
+      return [...es, { ...emptyBill(chargeTypes, gstTypes), invoiceNo: String(maxInv + 1), dutySlipNo: String(maxDuty + 1) }];
+    });
+    setActiveEntry(entries.length);
+  };
   const upC = (ei, cid, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, charges: e.charges.map(c => c.id === cid ? { ...c, [k]: v } : c) } : e));
   const upG = (ei, gid, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, gstLines: e.gstLines.map(g => g.id === gid ? { ...g, [k]: v } : g) } : e));
   const upToll = (ei, k, v) => setEntries(es => es.map((e, i) => i === ei ? { ...e, toll: { ...(e.toll || DEFAULT_TOLL), [k]: v } } : e));
@@ -911,7 +981,27 @@ export default function App() {
             {/* ── CLIENT DETAILS ── */}
             <div style={card}>
               <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Client Details</div>
-              <div><label style={lbl}>Client Name *</label><input style={{ ...inp, marginBottom: 8 }} value={bill.clientName} onChange={e => { upE(activeEntry, "clientName", e.target.value); autoFill(activeEntry, e.target.value); }} /></div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={lbl}>Client Name *</label>
+                <input style={{ ...inp, marginBottom: 6 }} value={bill.clientName} onChange={e => { upE(activeEntry, "clientName", e.target.value); autoFill(activeEntry, e.target.value); }} placeholder="Type name or pick below" />
+                {/* Quick-select: unique clients sorted by frequency */}
+                {(() => {
+                  const freq = {};
+                  bills.forEach(b => { if (b.client_name) freq[b.client_name] = (freq[b.client_name] || 0) + 1; });
+                  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).map(([name]) => name);
+                  if (sorted.length === 0) return null;
+                  return (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {sorted.map(name => (
+                        <button key={name} onClick={() => { upE(activeEntry, "clientName", name); autoFill(activeEntry, name); }}
+                          style={{ padding: "3px 10px", borderRadius: 14, border: `1px solid ${bill.clientName === name ? "#185FA5" : "#ccc"}`, background: bill.clientName === name ? "#E6F1FB" : "#f8f8f8", color: bill.clientName === name ? "#185FA5" : "#444", fontSize: 11, cursor: "pointer", fontWeight: bill.clientName === name ? 600 : 400 }}>
+                          {name} <span style={{ color: "#999", fontSize: 10 }}>×{freq[name]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <div><label style={lbl}>Phone</label><input style={inp} value={bill.clientPhone} onChange={e => upE(activeEntry, "clientPhone", e.target.value)} /></div>
                 <div><label style={lbl}>Client GSTIN</label><input style={inp} value={bill.clientGstin} onChange={e => upE(activeEntry, "clientGstin", e.target.value)} /></div>
@@ -927,7 +1017,7 @@ export default function App() {
               </div>
 
               {bill.rows.map((row, ri) => {
-                const lc = row.useLimit ? calcLimit(row.limit) : null;
+                const lc = row.useLimit ? calcLimit(row.limit, row.dateFrom, row.dateTo) : null;
                 return (
                   <div key={row.id} style={{ background: "#FAFAFA", border: "1.5px solid #ddd", borderRadius: 10, padding: "12px", marginBottom: 10 }}>
                     {/* Row header */}
