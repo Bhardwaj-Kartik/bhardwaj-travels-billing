@@ -85,13 +85,18 @@ const emptyRow = () => ({
   rate: "", amount: "",
 });
 
+// Charges that use per-day rate logic instead of flat amount
+const PER_DAY_CHARGE_IDS = ["da", "nightCharges"];
+
 const emptyBill = (ct, gt) => ({
   invoiceNo: "", dutySlipNo: "", cabNo: "",
   date: new Date().toISOString().slice(0, 10),
   clientName: "", clientPhone: "", clientAddress: "", clientGstin: "",
   dutyType: "local",
   rows: [emptyRow(), emptyRow(), emptyRow()],
-  charges: ct.map(c => ({ id: c.id, label: c.label, mode: "none", value: "" })),
+  charges: ct.map(c => PER_DAY_CHARGE_IDS.includes(c.id)
+    ? { id: c.id, label: c.label, mode: "none", perDayRate: "", perDayDays: "" }
+    : { id: c.id, label: c.label, mode: "none", value: "" }),
   gstLines: gt.map(g => ({ ...g })),
   toll: { ...DEFAULT_TOLL },
   paid: false,
@@ -155,8 +160,11 @@ function calcLimit(lim, dateFrom, dateTo) {
 function calcBill(bill) {
   const rowTotal = (bill.rows || []).reduce((s, r) =>
     s + (r.useLimit ? calcLimit(r.limit, r.dateFrom, r.dateTo).totalAmt : (parseFloat(r.amount) || 0)), 0);
-  const chargeTotal = (bill.charges || []).reduce((s, c) =>
-    s + (c.mode === "value" ? (parseFloat(c.value) || 0) : 0), 0);
+  const chargeTotal = (bill.charges || []).reduce((s, c) => {
+    if (c.mode === "value") return s + (parseFloat(c.value) || 0);
+    if (c.mode === "perDay") return s + (parseFloat(c.perDayRate) || 0) * (parseFloat(c.perDayDays) || 0);
+    return s;
+  }, 0);
   const subtotal = rowTotal + chargeTotal;
   const gstAmt = (bill.gstLines || []).filter(g => g.enabled).reduce((s, g) =>
     s + subtotal * (parseFloat(g.pct) || 0) / 100, 0);
@@ -233,13 +241,25 @@ function BillA4({ b }) {
 
   // Additional charges: printed in Particulars column LAST
   (b.charges || []).filter(ch => ch.mode !== "none").forEach(ch => {
-    printRows.push({
-      dateRange: "",
-      particulars: ch.label,
-      rate: "",
-      amount: ch.mode === "nil" ? "Nil" : `₹${parseFloat(ch.value || 0).toFixed(2)}`,
-      isCharge: true,
-    });
+    if (ch.mode === "perDay") {
+      const amt = (parseFloat(ch.perDayRate) || 0) * (parseFloat(ch.perDayDays) || 0);
+      const days = parseFloat(ch.perDayDays) || 0;
+      printRows.push({
+        dateRange: "",
+        particulars: ch.label + (days > 1 ? ` (${days} Days)` : ""),
+        rate: ch.perDayRate ? `₹${parseFloat(ch.perDayRate).toFixed(2)}/day` : "",
+        amount: amt > 0 ? `₹${amt.toFixed(2)}` : "Nil",
+        isCharge: true,
+      });
+    } else {
+      printRows.push({
+        dateRange: "",
+        particulars: ch.label,
+        rate: "",
+        amount: ch.mode === "nil" ? "Nil" : `₹${parseFloat(ch.value || 0).toFixed(2)}`,
+        isCharge: true,
+      });
+    }
   });
 
   const emptyNeeded = Math.max(0, 5 - printRows.length);
@@ -249,7 +269,7 @@ function BillA4({ b }) {
   return (
     <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
-        <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.13 }} />
+        <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.18 }} />
       </div>
       <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ background: "#185FA5", height: 8 }} />
@@ -569,7 +589,7 @@ export default function App() {
           useLimit: r.useLimit || false,
           limit: r.limit || emptyLimit(),
         })),
-        charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+        charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
         gstLines: b.gst_lines || [],
         dutySlipNo: b.duty_slip_no || "",
         toll: b.toll || (() => {
@@ -641,7 +661,7 @@ export default function App() {
         setBills(billsData.map(b => ({
           ...b,
           rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
-          charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+          charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
           gstLines: b.gst_lines || [],
           dutySlipNo: b.duty_slip_no || "",
           toll: b.toll || DEFAULT_TOLL,
@@ -840,7 +860,7 @@ export default function App() {
       clientAddress: viewingBill.client_address, clientGstin: viewingBill.client_gstin,
       dutyType: viewingBill.duty_type, dutySlipNo: viewingBill.duty_slip_no || "",
       rows: (viewingBill.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
-      charges: (viewingBill.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+      charges: (viewingBill.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
       gstLines: viewingBill.gst_lines || viewingBill.gstLines || [],
       toll: viewingBill.toll || DEFAULT_TOLL,
     };
@@ -1085,16 +1105,65 @@ export default function App() {
               return (
                 <div style={card}>
                   <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Additional Charges</div>
-                  {(bill.charges || []).map((c, ci) => (
-                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, color: "#666", minWidth: 170 }}>{c.label}</span>
-                      <select style={{ ...inp, width: 90, fontSize: 12 }} value={c.mode} onChange={e => upC(activeEntry, c.id, "mode", e.target.value)}>
-                        <option value="none">None</option><option value="nil">Nil</option><option value="value">Enter ₹</option>
-                      </select>
-                      {c.mode === "value" && <input type="number" style={{ ...inp, width: 80, fontSize: 12 }} value={c.value} onChange={e => upC(activeEntry, c.id, "value", e.target.value)} placeholder="₹" />}
-                      <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "3px 8px", fontSize: 11 }} onClick={() => upE(activeEntry, "charges", (bill.charges || []).filter((_, i) => i !== ci))}>✕</button>
-                    </div>
-                  ))}
+                  {(bill.charges || []).map((c, ci) => {
+                    const isPerDay = PER_DAY_CHARGE_IDS.includes(c.id);
+                    // Auto-detect max days from trip rows for suggestion
+                    const tripDays = Math.max(1, ...bill.rows.map(r => r.dateFrom ? calcDays(r.dateFrom, r.dateTo) : 1));
+                    return (
+                      <div key={c.id} style={{ marginBottom: 10, padding: "8px 10px", background: "#FAFAFA", borderRadius: 8, border: "0.5px solid #ddd" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: "#444", minWidth: 170 }}>{c.label}</span>
+                          <select style={{ ...inp, width: isPerDay ? 100 : 90, fontSize: 12 }} value={c.mode}
+                            onChange={e => upC(activeEntry, c.id, "mode", e.target.value)}>
+                            <option value="none">None</option>
+                            <option value="nil">Nil</option>
+                            {isPerDay
+                              ? <option value="perDay">Per Day Rate</option>
+                              : <option value="value">Enter ₹</option>}
+                          </select>
+                          {/* Normal charge: flat amount */}
+                          {!isPerDay && c.mode === "value" && (
+                            <input type="number" style={{ ...inp, width: 80, fontSize: 12 }} value={c.value}
+                              onChange={e => upC(activeEntry, c.id, "value", e.target.value)} placeholder="₹" />
+                          )}
+                          <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "3px 8px", fontSize: 11 }}
+                            onClick={() => upE(activeEntry, "charges", (bill.charges || []).filter((_, i) => i !== ci))}>✕</button>
+                        </div>
+                        {/* Per-day charge: rate + days selector */}
+                        {isPerDay && c.mode === "perDay" && (
+                          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <div style={{ flex: 1, minWidth: 120 }}>
+                              <label style={{ fontSize: 11, color: "#666", display: "block", marginBottom: 3 }}>Rate per Day (₹)</label>
+                              <input type="number" style={{ ...inp, fontSize: 12 }} value={c.perDayRate || ""}
+                                onChange={e => upC(activeEntry, c.id, "perDayRate", e.target.value)} placeholder="e.g. 200" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 120 }}>
+                              <label style={{ fontSize: 11, color: "#666", display: "block", marginBottom: 3 }}>
+                                No. of Days
+                                {tripDays > 1 && <span style={{ color: "#185FA5", marginLeft: 4 }}>(Trip: {tripDays} days)</span>}
+                              </label>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <input type="number" style={{ ...inp, fontSize: 12 }} value={c.perDayDays || ""}
+                                  onChange={e => upC(activeEntry, c.id, "perDayDays", e.target.value)}
+                                  placeholder={`e.g. ${tripDays}`} min="1" max={tripDays} />
+                                {tripDays > 1 && (
+                                  <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "6px 8px", fontSize: 11, whiteSpace: "nowrap" }}
+                                    onClick={() => upC(activeEntry, c.id, "perDayDays", String(tripDays))}>
+                                    All {tripDays}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {c.perDayRate && c.perDayDays && (
+                              <div style={{ fontSize: 12, color: "#185FA5", fontWeight: 500, alignSelf: "flex-end", paddingBottom: 2 }}>
+                                = ₹{(parseFloat(c.perDayRate) * parseFloat(c.perDayDays)).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <div style={{ borderTop: "0.5px solid #eee", paddingTop: 10, marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <select style={{ ...inp, flex: 1, fontSize: 12 }} value={ibc.selected || ""} onChange={e => setIbc({ selected: e.target.value, customName: "" })}>
                       <option value="" disabled>Select charge to add...</option>
@@ -1103,8 +1172,18 @@ export default function App() {
                     </select>
                     <button style={{ ...btn("#EAF3DE", "#3B6D11"), fontSize: 12 }} onClick={() => {
                       if (!ibc.selected) return;
-                      if (ibc.selected === "__custom__") { const name = (ibc.customName || "").trim(); if (!name) return; upE(activeEntry, "charges", [...(bill.charges || []), { id: "oc_" + Date.now(), label: name, mode: "none", value: "" }]); }
-                      else { const ct = chargeTypes.find(c => c.id === ibc.selected); if (ct) upE(activeEntry, "charges", [...(bill.charges || []), { id: ct.id, label: ct.label, mode: "none", value: "" }]); }
+                      if (ibc.selected === "__custom__") {
+                        const name = (ibc.customName || "").trim(); if (!name) return;
+                        upE(activeEntry, "charges", [...(bill.charges || []), { id: "oc_" + Date.now(), label: name, mode: "none", value: "" }]);
+                      } else {
+                        const ct = chargeTypes.find(c => c.id === ibc.selected);
+                        if (ct) {
+                          const isPerDay = PER_DAY_CHARGE_IDS.includes(ct.id);
+                          upE(activeEntry, "charges", [...(bill.charges || []), isPerDay
+                            ? { id: ct.id, label: ct.label, mode: "none", perDayRate: "", perDayDays: "" }
+                            : { id: ct.id, label: ct.label, mode: "none", value: "" }]);
+                        }
+                      }
                       setIbc({ selected: "", customName: "" });
                     }}>+ Add</button>
                   </div>
@@ -1255,7 +1334,7 @@ export default function App() {
                             clientAddress: b.client_address || "", clientGstin: b.client_gstin || "",
                             dutyType: b.duty_type,
                             rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
-                            charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs"),
+                            charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
                             gstLines: b.gst_lines || b.gstLines || [],
                             toll: b.toll || DEFAULT_TOLL,
                             paid: b.paid || false,
