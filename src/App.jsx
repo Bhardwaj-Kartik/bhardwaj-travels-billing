@@ -11,7 +11,7 @@ const BUSINESS = {
   address: "#218-O, Victoria City / Enclave, Bhabat, Zirakpur, Mohali, Punjab-140603",
   phones: ["94175-66648", "98159-70070"], email: "bhardwajtravels999@gmail.com",
   gstin: "03BJZPB5991C1Z1",
-  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travels", upi: "9815970070@CNRB" },
+  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travel's", upi: "9815970070@CNRB" },
   terms: ["E. & O.E.", "All disputes subject to Mohali jurisdiction.", "Kilometer & Time will be charged garage to garage.", "Luggage/Goods being carried at owner's risk."]
 };
 
@@ -267,19 +267,23 @@ function BillA4({ b }) {
   const td = (extra = {}) => ({ padding: "4px 7px", border: "0.75px solid #999", ...extra });
 
   return (
-    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", position: "relative", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "794px", height: "1123px", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
         <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.18 }} />
       </div>
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ background: "#185FA5", height: 8 }} />
-        <div style={{ padding: "10px 14px" }}>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
+        <div style={{ background: "#185FA5", height: 10 }} />
+        {/* Main content grows to fill space */}
+        <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
+
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <img src={logo} style={{ width: 52, height: 52, objectFit: "contain", flexShrink: 0, marginTop: 0 }} />
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontWeight: 900, fontSize: "22pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.0, letterSpacing: "0px", color: "#000" }}>{BUSINESS.name}</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              {/* Logo: top edge aligns with text top, height matches heading */}
+              <img src={logo} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, marginTop: 3 }} />
+              {/* Text block: heading + all details left-aligned */}
+              <div>
+                <div style={{ fontWeight: 900, fontSize: "21pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.0, color: "#000", whiteSpace: "nowrap" }}>{BUSINESS.name}</div>
                 <div style={{ fontSize: "7.5pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", marginTop: 1, letterSpacing: "0.5px" }}>{BUSINESS.tagline}</div>
                 <div style={{ fontSize: "6.5pt", color: "#555", marginTop: 2 }}>{BUSINESS.deals}</div>
                 <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>{BUSINESS.address}</div>
@@ -308,7 +312,7 @@ function BillA4({ b }) {
             {b.clientGstin && <div style={{ fontSize: "9pt" }}>GSTIN: {b.clientGstin}</div>}
           </div>
 
-          {/* Trip Table — dark borders */}
+          {/* Trip Table */}
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10pt", marginBottom: 8 }}>
             <thead>
               <tr style={{ background: "#185FA5", color: "#fff" }}>
@@ -338,9 +342,10 @@ function BillA4({ b }) {
                 <td colSpan={3} style={td({ textAlign: "right", fontWeight: 700 })}>Total</td>
                 <td style={td({ textAlign: "right", fontWeight: 700 })}>₹{c.subtotal.toFixed(2)}</td>
               </tr>
+              {/* GST lines — always show % even when Nil */}
               {(b.gstLines || []).filter(g => g.enabled || g.nil).map(g => (
                 <tr key={g.id}>
-                  <td colSpan={3} style={td({ textAlign: "right" })}>{g.label}{!g.nil ? ` @ ${g.pct}%` : ""}</td>
+                  <td colSpan={3} style={td({ textAlign: "right" })}>{g.label} @ {g.pct}%</td>
                   <td style={td({ textAlign: "right" })}>{g.nil ? "Nil" : `₹${(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}`}</td>
                 </tr>
               ))}
@@ -366,6 +371,9 @@ function BillA4({ b }) {
             </tfoot>
           </table>
 
+          {/* Spacer — pushes footer to bottom on short bills */}
+          <div style={{ flex: 1 }} />
+
           {/* Footer */}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8.5pt", marginTop: 12, alignItems: "flex-start" }}>
             <div>
@@ -378,17 +386,17 @@ function BillA4({ b }) {
                 <div style={{ fontSize: "7pt", color: "#555", marginTop: 2 }}>Scan to Pay</div>
               </div>
             </div>
-            <div style={{ textAlign: "center", minWidth: 220 }}>
+            <div style={{ textAlign: "right", minWidth: 200 }}>
               <div style={{ fontFamily: "cursive", fontSize: "17pt", color: "#185FA5", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 56, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "13pt", fontWeight: 700, textAlign: "right", fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "11pt", textAlign: "right", marginTop: 4, color: "#444", fontStyle: "italic" }}>Authorised Signatory / Prop.</div>
+              <div style={{ marginTop: 52, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "13pt", fontWeight: 700, fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "10pt", marginTop: 4, color: "#444", fontStyle: "italic" }}>Prop.</div>
             </div>
           </div>
           <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
             {BUSINESS.terms.map((t, i) => <div key={i} style={{ fontSize: "8.5pt", color: "#555" }}>{t}</div>)}
           </div>
         </div>
-        <div style={{ background: "#185FA5", height: 8 }} />
+        <div style={{ background: "#185FA5", height: 10 }} />
       </div>
     </div>
   );
