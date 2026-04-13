@@ -276,13 +276,13 @@ function BillA4({ b }) {
         <div style={{ padding: "10px 14px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <img src={logo} style={{ width: 58, height: 58, objectFit: "contain", flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <div style={{ fontWeight: 900, fontSize: "22pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.05, letterSpacing: "0px", color: "#000" }}>{BUSINESS.name}</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <img src={logo} style={{ width: 52, height: 52, objectFit: "contain", flexShrink: 0, marginTop: 0 }} />
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontWeight: 900, fontSize: "22pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.0, letterSpacing: "0px", color: "#000" }}>{BUSINESS.name}</div>
                 <div style={{ fontSize: "7.5pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", marginTop: 1, letterSpacing: "0.5px" }}>{BUSINESS.tagline}</div>
                 <div style={{ fontSize: "6.5pt", color: "#555", marginTop: 2 }}>{BUSINESS.deals}</div>
-                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1, whiteSpace: "nowrap" }}>{BUSINESS.address}</div>
+                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>{BUSINESS.address}</div>
                 <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>Mob: {BUSINESS.phones.join(" / ")} &nbsp;|&nbsp; {BUSINESS.email}</div>
               </div>
             </div>
