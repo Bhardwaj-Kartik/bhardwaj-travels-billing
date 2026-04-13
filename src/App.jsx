@@ -29,9 +29,9 @@ const DEFAULT_CHARGES = [
 ];
 
 const DEFAULT_GST = [
-  { id: "cgst", label: "CGST", pct: 2.5, enabled: false },
-  { id: "sgst", label: "SGST", pct: 2.5, enabled: false },
-  { id: "igst", label: "IGST", pct: 5, enabled: false }
+  { id: "cgst", label: "CGST", pct: 2.5, enabled: false, nil: false },
+  { id: "sgst", label: "SGST", pct: 2.5, enabled: false, nil: false },
+  { id: "igst", label: "IGST", pct: 5, enabled: false, nil: false }
 ];
 
 const DEFAULT_TOLL = { mode: "none", value: "" };
@@ -267,7 +267,7 @@ function BillA4({ b }) {
   const td = (extra = {}) => ({ padding: "4px 7px", border: "0.75px solid #999", ...extra });
 
   return (
-    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", pageBreakAfter: "always", position: "relative" }}>
+    <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "210mm", minHeight: "297mm", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", position: "relative", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 0, pointerEvents: "none" }}>
         <img src={logo} style={{ width: 320, height: 320, objectFit: "contain", opacity: 0.18 }} />
       </div>
@@ -276,26 +276,26 @@ function BillA4({ b }) {
         <div style={{ padding: "10px 14px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <img src={logo} style={{ width: 68, height: 68, objectFit: "contain", flexShrink: 0 }} />
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <img src={logo} style={{ width: 58, height: 58, objectFit: "contain", flexShrink: 0, marginTop: 2 }} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: "15pt" }}>{BUSINESS.name}</div>
-                <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700 }}>{BUSINESS.tagline}</div>
-                <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.deals}</div>
-                <div style={{ fontSize: "9pt", color: "#333" }}>{BUSINESS.address}</div>
-                <div style={{ fontSize: "9pt" }}>Mob: {BUSINESS.phones.join(" / ")} | {BUSINESS.email}</div>
+                <div style={{ fontWeight: 900, fontSize: "22pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.05, letterSpacing: "0px", color: "#000" }}>{BUSINESS.name}</div>
+                <div style={{ fontSize: "7.5pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", marginTop: 1, letterSpacing: "0.5px" }}>{BUSINESS.tagline}</div>
+                <div style={{ fontSize: "6.5pt", color: "#555", marginTop: 2 }}>{BUSINESS.deals}</div>
+                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1, whiteSpace: "nowrap" }}>{BUSINESS.address}</div>
+                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>Mob: {BUSINESS.phones.join(" / ")} &nbsp;|&nbsp; {BUSINESS.email}</div>
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "20pt", fontWeight: 700, color: "#185FA5" }}>TAX INVOICE</div>
-              <div style={{ fontSize: "9pt" }}>GSTIN: {BUSINESS.gstin}</div>
-              <div style={{ fontSize: "10pt", fontWeight: 700, display: "flex", flexWrap: "wrap", gap: "4px 16px", alignItems: "baseline", justifyContent: "flex-end" }}>
+            <div style={{ textAlign: "right", minWidth: 165 }}>
+              <div style={{ fontSize: "18pt", fontWeight: 900, color: "#185FA5", fontFamily: "'Georgia','Times New Roman',serif", letterSpacing: "1px" }}>TAX INVOICE</div>
+              <div style={{ fontSize: "8pt" }}>GSTIN: {BUSINESS.gstin}</div>
+              <div style={{ fontSize: "9pt", fontWeight: 700, display: "flex", flexWrap: "wrap", gap: "2px 12px", alignItems: "baseline", justifyContent: "flex-end", marginTop: 1 }}>
                 <span>Invoice No: {b.invoiceNo}</span>
-                <span>Duty Slip No: {b.dutySlipNo || "—"}</span>
+                <span>Duty Slip: {b.dutySlipNo || "—"}</span>
               </div>
-              <div style={{ fontSize: "9pt" }}>Date: {fmtDate(b.date)}</div>
-              {b.cabNo && <div style={{ fontSize: "9pt" }}>Cab No: {b.cabNo}</div>}
-              <div style={{ fontSize: "9pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
+              <div style={{ fontSize: "8pt", marginTop: 1 }}>Date: {fmtDate(b.date)}</div>
+              {b.cabNo && <div style={{ fontSize: "8pt" }}>Cab No: {b.cabNo}</div>}
+              <div style={{ fontSize: "8pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
             </div>
           </div>
 
@@ -338,10 +338,10 @@ function BillA4({ b }) {
                 <td colSpan={3} style={td({ textAlign: "right", fontWeight: 700 })}>Total</td>
                 <td style={td({ textAlign: "right", fontWeight: 700 })}>₹{c.subtotal.toFixed(2)}</td>
               </tr>
-              {(b.gstLines || []).filter(g => g.enabled).map(g => (
+              {(b.gstLines || []).filter(g => g.enabled || g.nil).map(g => (
                 <tr key={g.id}>
-                  <td colSpan={3} style={td({ textAlign: "right" })}>{g.label} @ {g.pct}%</td>
-                  <td style={td({ textAlign: "right" })}>₹{(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</td>
+                  <td colSpan={3} style={td({ textAlign: "right" })}>{g.label}{!g.nil ? ` @ ${g.pct}%` : ""}</td>
+                  <td style={td({ textAlign: "right" })}>{g.nil ? "Nil" : `₹${(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}`}</td>
                 </tr>
               ))}
               {toll.mode !== "none" && (
@@ -367,21 +367,21 @@ function BillA4({ b }) {
           </table>
 
           {/* Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9pt", marginTop: 10, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8.5pt", marginTop: 12, alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: "10pt", marginBottom: 4 }}>Payment Info:</div>
+              <div style={{ fontWeight: 700, fontSize: "9.5pt", marginBottom: 4 }}>Payment Info:</div>
               <div>Bank: {BUSINESS.bank.name} | A/C: {BUSINESS.bank.acc}</div>
               <div>IFSC: {BUSINESS.bank.ifsc} | A/C Name: {BUSINESS.bank.holder}</div>
               <div>UPI: {BUSINESS.bank.upi}</div>
-              <div style={{ marginTop: 6 }}>
+              <div style={{ marginTop: 8 }}>
                 <img src={UPI_QR_URL} style={{ width: 80, height: 80 }} crossOrigin="anonymous" />
                 <div style={{ fontSize: "7pt", color: "#555", marginTop: 2 }}>Scan to Pay</div>
               </div>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "cursive", fontSize: "13pt", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 28, borderTop: "1px solid #000", paddingTop: 4, fontSize: "10pt", fontWeight: 700, textAlign: "right" }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "9pt", textAlign: "right", marginTop: 8 }}>Prop.</div>
+            <div style={{ textAlign: "center", minWidth: 220 }}>
+              <div style={{ fontFamily: "cursive", fontSize: "17pt", color: "#185FA5", marginBottom: 4 }}>Thanks For Visit</div>
+              <div style={{ marginTop: 56, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "13pt", fontWeight: 700, textAlign: "right", fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "11pt", textAlign: "right", marginTop: 4, color: "#444", fontStyle: "italic" }}>Authorised Signatory / Prop.</div>
             </div>
           </div>
           <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
@@ -698,24 +698,21 @@ export default function App() {
       const pages = billsRef.current.querySelectorAll(".bill-page");
       for (let i = 0; i < pages.length; i++) {
         const el = pages[i];
-        const actualHeight = el.scrollHeight;
+        const A4_PX = 1123;
+        const actualHeight = Math.max(el.scrollHeight, A4_PX);
         const canvas = await html2canvas(el, {
           scale: 3, useCORS: true, backgroundColor: "#ffffff",
           width: 794, height: actualHeight, windowWidth: 794,
         });
         const imgData = canvas.toDataURL("image/png");
         const pdfWidth = 210;
-        const pdfHeight = 297; // always A4
-        // Scale image to fit within A4 — compresses if taller, fits perfectly if shorter
-        const imgAspect = actualHeight / 794;
-        const imgHeightInMm = imgAspect * pdfWidth;
+        const pdfHeight = 297;
+        const imgHeightInMm = (actualHeight / 794) * pdfWidth;
         const scale = imgHeightInMm > pdfHeight ? pdfHeight / imgHeightInMm : 1;
         const finalW = pdfWidth * scale;
         const finalH = imgHeightInMm * scale;
-        const offsetX = (pdfWidth - finalW) / 2;
-        const offsetY = 0; // top-align, no blank space above
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
+        pdf.addImage(imgData, "PNG", 0, 0, finalW, finalH);
       }
       pdf.save(`BhardwajTravels_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e) { alert("PDF generation failed."); }
@@ -726,23 +723,21 @@ export default function App() {
     if (!viewBillRef.current) return; setPdfLoading(true);
     try {
       const el = viewBillRef.current;
-      const actualHeight = el.scrollHeight;
+      const A4_PX = 1123;
+      const actualHeight = Math.max(el.scrollHeight, A4_PX);
       const canvas = await html2canvas(el, {
         scale: 3, useCORS: true, backgroundColor: "#ffffff",
         width: 794, height: actualHeight, windowWidth: 794,
       });
       const imgData = canvas.toDataURL("image/png");
       const pdfWidth = 210;
-      const pdfHeight = 297; // always A4
-      const imgAspect = actualHeight / 794;
-      const imgHeightInMm = imgAspect * pdfWidth;
+      const pdfHeight = 297;
+      const imgHeightInMm = (actualHeight / 794) * pdfWidth;
       const scale = imgHeightInMm > pdfHeight ? pdfHeight / imgHeightInMm : 1;
       const finalW = pdfWidth * scale;
       const finalH = imgHeightInMm * scale;
-      const offsetX = (pdfWidth - finalW) / 2;
-      const offsetY = 0; // top-align, no blank space above
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
+      pdf.addImage(imgData, "PNG", 0, 0, finalW, finalH);
       pdf.save(`BhardwajTravels_${invoiceNo}.pdf`);
     } catch (e) { alert("PDF generation failed."); }
     setPdfLoading(false);
@@ -1201,14 +1196,30 @@ export default function App() {
                   <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>GST</div>
                   {(bill.gstLines || []).map((g, gi) => (
                     <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", minWidth: 60 }}>
-                        <input type="checkbox" checked={g.enabled} onChange={e => upG(activeEntry, g.id, "enabled", e.target.checked)} />{g.label}
-                      </label>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <input type="number" style={{ ...inp, width: 65, fontSize: 12 }} value={g.pct} onChange={e => upG(activeEntry, g.id, "pct", parseFloat(e.target.value) || 0)} />
-                        <span style={{ fontSize: 12, color: "#666" }}>%</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, minWidth: 55, color: "#333" }}>{g.label}</span>
+                      {/* Mode: None / Nil / % */}
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {["none","nil","value"].map(m => (
+                          <button key={m} onClick={() => {
+                            upG(activeEntry, g.id, "enabled", m === "value");
+                            upG(activeEntry, g.id, "nil", m === "nil");
+                          }} style={{ padding: "3px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", border: "1px solid #ccc",
+                            background: (m === "value" && g.enabled) ? "#185FA5" : (m === "nil" && g.nil) ? "#FAEEDA" : (m === "none" && !g.enabled && !g.nil) ? "#f0f0f0" : "#fff",
+                            color: (m === "value" && g.enabled) ? "#fff" : (m === "nil" && g.nil) ? "#854F0B" : "#555",
+                            fontWeight: ((m === "value" && g.enabled) || (m === "nil" && g.nil) || (m === "none" && !g.enabled && !g.nil)) ? 600 : 400
+                          }}>
+                            {m === "none" ? "None" : m === "nil" ? "Nil" : "Apply %"}
+                          </button>
+                        ))}
                       </div>
-                      {g.enabled && <span style={{ fontSize: 11, color: "#185FA5" }}>= ₹{(calc.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</span>}
+                      {g.enabled && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <input type="number" style={{ ...inp, width: 65, fontSize: 12 }} value={g.pct} onChange={e => upG(activeEntry, g.id, "pct", parseFloat(e.target.value) || 0)} />
+                          <span style={{ fontSize: 12, color: "#666" }}>%</span>
+                          <span style={{ fontSize: 11, color: "#185FA5" }}>= ₹{(calc.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {g.nil && <span style={{ fontSize: 11, color: "#854F0B" }}>Will show as Nil</span>}
                       <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "3px 8px", fontSize: 11 }} onClick={() => upE(activeEntry, "gstLines", (bill.gstLines || []).filter((_, i) => i !== gi))}>✕</button>
                     </div>
                   ))}
@@ -1254,8 +1265,11 @@ export default function App() {
             {/* ── GRAND TOTAL SUMMARY ── */}
             <div style={{ ...card, background: "#E6F1FB", border: "1px solid #185FA5" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}><span>Subtotal</span><span>₹{calc.subtotal.toFixed(2)}</span></div>
-              {(bill.gstLines || []).filter(g => g.enabled).map(g => (
-                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}><span>{g.label} @ {g.pct}%</span><span>₹{(calc.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}</span></div>
+              {(bill.gstLines || []).filter(g => g.enabled || g.nil).map(g => (
+                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                  <span>{g.label}{!g.nil ? ` @ ${g.pct}%` : ""}</span>
+                  <span>{g.nil ? "Nil" : `₹${(calc.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}`}</span>
+                </div>
               ))}
               {toll.mode === "value" && toll.value && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}><span>Toll / Parking / Entry Tax</span><span>₹{parseFloat(toll.value || 0).toFixed(2)}</span></div>}
               {toll.mode === "nil" && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#854F0B" }}><span>Toll / Parking / Entry Tax</span><span>Nil</span></div>}
