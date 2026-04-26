@@ -22,7 +22,6 @@ const RATES_DEFAULT = [
   { id: 4, name: "Etios Outstation", type: "package", rate: 1400 },
 ];
 
-// Extra KM and Extra HRS removed — handled by Limit system now
 const DEFAULT_CHARGES = [
   { id: "da", label: "DA (Driver Allowance)" },
   { id: "nightCharges", label: "Night Charges" },
@@ -35,7 +34,7 @@ const DEFAULT_GST = [
 ];
 
 const DEFAULT_TOLL = { mode: "none", value: "" };
-const UPI_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=upi://pay?pa=9815970070@CNRB%26pn=Bhardwaj%20Travels`;
+const UPI_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=upi://pay?pa=9815970070@CNRB%26pn=Bhardwaj%20Travels`;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function numToWords(n) {
@@ -62,7 +61,6 @@ function timeToHours(t) {
   return (h || 0) + (m || 0) / 60;
 }
 
-// Format ISO date (yyyy-mm-dd) to dd/mm/yyyy
 function fmtDate(d) {
   if (!d) return "";
   const parts = d.split("-");
@@ -75,7 +73,7 @@ const emptyLimit = () => ({
   kmInputMode: "direct", totalKm: "", odomFinal: "", odomInitial: "",
   hrsInputMode: "direct", totalHrs: "", timeFinal: "", timeInitial: "",
   packageRate: "", extraKmRate: "", extraHrsRate: "",
-  packageRateMode: "flat", // "flat" = exact total price, "per_km" = rate×kmLimit per day
+  packageRateMode: "flat",
 });
 
 const emptyRow = () => ({
@@ -85,7 +83,6 @@ const emptyRow = () => ({
   rate: "", amount: "",
 });
 
-// Charges that use per-day rate logic instead of flat amount
 const PER_DAY_CHARGE_IDS = ["da", "nightCharges"];
 
 const emptyBill = (ct, gt) => ({
@@ -102,13 +99,12 @@ const emptyBill = (ct, gt) => ({
   paid: false,
 });
 
-// Calculate number of days between two ISO date strings (inclusive)
 function calcDays(dateFrom, dateTo) {
   if (!dateFrom) return 1;
   const from = new Date(dateFrom);
   const to = dateTo && dateTo !== dateFrom ? new Date(dateTo) : new Date(dateFrom);
   const diff = Math.round((to - from) / (1000 * 60 * 60 * 24));
-  return Math.max(1, diff + 1); // inclusive, minimum 1
+  return Math.max(1, diff + 1);
 }
 
 // ─── LIMIT CALCULATION ────────────────────────────────────────────────────────
@@ -137,13 +133,10 @@ function calcLimit(lim, dateFrom, dateTo) {
   const extraKmRate = parseFloat(lim.extraKmRate) || 0;
   const extraHrsRate = parseFloat(lim.extraHrsRate) || 0;
 
-  // Determine one-day package amount based on rate mode
   let oneDayPackageAmt = 0;
   if (lim.packageRateMode === "per_km") {
-    // rate is per km, multiply by km limit to get one-day price
     oneDayPackageAmt = packageRate * kmLimit;
   } else {
-    // flat: the entered rate is already the per-day total price
     oneDayPackageAmt = packageRate;
   }
   const packageAmt = oneDayPackageAmt * days;
@@ -181,7 +174,6 @@ function BillA4({ b }) {
   const c = calcBill(b);
   const toll = b.toll || DEFAULT_TOLL;
 
-  // Build rows for the printed table
   const printRows = [];
   (b.rows || []).forEach(r => {
     const dateRange = r.dateFrom
@@ -196,7 +188,6 @@ function BillA4({ b }) {
       const limitLabel = [hasHrs ? `${lim.hrsLimit} Hours` : null, hasKm ? `${lim.kmLimit} KM` : null].filter(Boolean).join(" + ");
       const daysLabel = lc.days > 1 ? ` for ${lc.days} Days` : "";
 
-      // Rate display: flat shows total per-day price, per_km shows rate×km
       let rateDisplay = "";
       if (lim.packageRateMode === "per_km" && lim.packageRate && hasKm) {
         rateDisplay = `₹${parseFloat(lim.packageRate).toFixed(2)}/km × ${lim.kmLimit}km${lc.days > 1 ? ` × ${lc.days}d` : ""}`;
@@ -204,14 +195,12 @@ function BillA4({ b }) {
         rateDisplay = `₹${lc.oneDayPackageAmt.toFixed(2)}${lc.days > 1 ? `/day × ${lc.days}` : ""}`;
       }
 
-      // Package row
       printRows.push({
         dateRange,
         particulars: (r.particulars ? r.particulars + "\n" : "") + `${limitLabel} Limit${daysLabel}`,
         rate: rateDisplay,
         amount: lc.packageAmt > 0 ? `₹${lc.packageAmt.toFixed(2)}` : "",
       });
-      // Extra KM row
       if (hasKm && lc.extraKm > 0) {
         printRows.push({
           dateRange: "",
@@ -220,7 +209,6 @@ function BillA4({ b }) {
           amount: `₹${lc.extraKmAmt.toFixed(2)}`,
         });
       }
-      // Extra HRS row
       if (hasHrs && lc.extraHrs > 0) {
         printRows.push({
           dateRange: "",
@@ -239,7 +227,6 @@ function BillA4({ b }) {
     }
   });
 
-  // Additional charges: printed in Particulars column LAST
   (b.charges || []).filter(ch => ch.mode !== "none").forEach(ch => {
     if (ch.mode === "perDay") {
       const amt = (parseFloat(ch.perDayRate) || 0) * (parseFloat(ch.perDayDays) || 0);
@@ -263,7 +250,6 @@ function BillA4({ b }) {
   });
 
   const emptyNeeded = Math.max(0, 5 - printRows.length);
-
   const td = (extra = {}) => ({ padding: "4px 7px", border: "0.75px solid #999", ...extra });
 
   return (
@@ -273,15 +259,12 @@ function BillA4({ b }) {
       </div>
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ background: "#185FA5", height: 10 }} />
-        {/* Main content grows to fill space */}
         <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
 
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-              {/* Logo: top edge aligns with text top, height matches heading */}
               <img src={logo} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, marginTop: 3 }} />
-              {/* Text block: heading + all details left-aligned */}
               <div>
                 <div style={{ fontWeight: 900, fontSize: "21pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.0, color: "#000", whiteSpace: "nowrap" }}>{BUSINESS.name}</div>
                 <div style={{ fontSize: "7.5pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", marginTop: 1, letterSpacing: "0.5px" }}>{BUSINESS.tagline}</div>
@@ -342,7 +325,6 @@ function BillA4({ b }) {
                 <td colSpan={3} style={td({ textAlign: "right", fontWeight: 700 })}>Total</td>
                 <td style={td({ textAlign: "right", fontWeight: 700 })}>₹{c.subtotal.toFixed(2)}</td>
               </tr>
-              {/* GST lines — always show % even when Nil */}
               {(b.gstLines || []).filter(g => g.enabled || g.nil).map(g => (
                 <tr key={g.id}>
                   <td colSpan={3} style={td({ textAlign: "right" })}>{g.label} @ {g.pct}%</td>
@@ -371,30 +353,36 @@ function BillA4({ b }) {
             </tfoot>
           </table>
 
-          {/* Spacer — pushes footer to bottom on short bills */}
+          {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8.5pt", marginTop: 12, alignItems: "flex-start" }}>
+          {/* ── FOOTER (sizes increased) ── */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10pt", marginTop: 12, alignItems: "flex-start" }}>
+            {/* Payment Info */}
             <div>
-              <div style={{ fontWeight: 700, fontSize: "9.5pt", marginBottom: 4 }}>Payment Info:</div>
+              <div style={{ fontWeight: 700, fontSize: "11.5pt", marginBottom: 4 }}>Payment Info:</div>
               <div>Bank: {BUSINESS.bank.name} | A/C: {BUSINESS.bank.acc}</div>
               <div>IFSC: {BUSINESS.bank.ifsc} | A/C Name: {BUSINESS.bank.holder}</div>
               <div>UPI: {BUSINESS.bank.upi}</div>
               <div style={{ marginTop: 8 }}>
-                <img src={UPI_QR_URL} style={{ width: 80, height: 80 }} crossOrigin="anonymous" />
-                <div style={{ fontSize: "7pt", color: "#555", marginTop: 2 }}>Scan to Pay</div>
+                <img src={UPI_QR_URL} style={{ width: 100, height: 100 }} crossOrigin="anonymous" />
+                <div style={{ fontSize: "9pt", color: "#555", marginTop: 2 }}>Scan to Pay</div>
               </div>
             </div>
+
+            {/* Signature */}
             <div style={{ textAlign: "right", minWidth: 200 }}>
-              <div style={{ fontFamily: "cursive", fontSize: "17pt", color: "#185FA5", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 52, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "13pt", fontWeight: 700, fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "10pt", marginTop: 4, color: "#444", fontStyle: "italic" }}>Prop.</div>
+              <div style={{ fontFamily: "cursive", fontSize: "21pt", color: "#185FA5", marginBottom: 4 }}>Thanks For Visit</div>
+              <div style={{ marginTop: 52, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "15.5pt", fontWeight: 700, fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "12pt", marginTop: 4, color: "#444", fontStyle: "italic" }}>Prop.</div>
             </div>
           </div>
+
+          {/* Terms */}
           <div style={{ marginTop: 10, borderTop: "0.5px solid #ccc", paddingTop: 6 }}>
-            {BUSINESS.terms.map((t, i) => <div key={i} style={{ fontSize: "8.5pt", color: "#555" }}>{t}</div>)}
+            {BUSINESS.terms.map((t, i) => <div key={i} style={{ fontSize: "10pt", color: "#555" }}>{t}</div>)}
           </div>
+
         </div>
         <div style={{ background: "#185FA5", height: 10 }} />
       </div>
@@ -402,7 +390,7 @@ function BillA4({ b }) {
   );
 }
 
-// ─── LIMIT EDITOR (inline component for Create Bill) ──────────────────────────
+// ─── LIMIT EDITOR ─────────────────────────────────────────────────────────────
 function LimitEditor({ lim, onChange, calcResult }) {
   const inp2 = { width: "100%", boxSizing: "border-box", padding: "6px 8px", borderRadius: 6, border: "1px solid #ccc", fontSize: 12, background: "#fff", color: "#000" };
   const lbl2 = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
@@ -644,7 +632,6 @@ export default function App() {
       }
       await loadData();
       alert("Bills saved successfully!");
-      // loadData already resets entries with next invoice/duty slip numbers
       setActiveEntry(0); setPreviewMode(false);
     } finally { setLoading(false); }
   };
@@ -663,7 +650,6 @@ export default function App() {
         gst_lines: e.gstLines, toll: e.toll || DEFAULT_TOLL,
       }).eq("id", editingBillId);
       if (error) { alert("Update failed: " + error.message); return; }
-      // Reload bills list only (not entries — we handle navigation manually)
       const { data: billsData } = await supabase.from("bills").select("*").order("saved_at", { ascending: false });
       if (billsData) {
         setBills(billsData.map(b => ({
@@ -1007,7 +993,6 @@ export default function App() {
               <div style={{ marginBottom: 8 }}>
                 <label style={lbl}>Client Name *</label>
                 <input style={{ ...inp, marginBottom: 6 }} value={bill.clientName} onChange={e => { upE(activeEntry, "clientName", e.target.value); autoFill(activeEntry, e.target.value); }} placeholder="Type name or pick below" />
-                {/* Quick-select: unique clients sorted by frequency */}
                 {(() => {
                   const freq = {};
                   bills.forEach(b => { if (b.client_name) freq[b.client_name] = (freq[b.client_name] || 0) + 1; });
@@ -1043,7 +1028,6 @@ export default function App() {
                 const lc = row.useLimit ? calcLimit(row.limit, row.dateFrom, row.dateTo) : null;
                 return (
                   <div key={row.id} style={{ background: "#FAFAFA", border: "1.5px solid #ddd", borderRadius: 10, padding: "12px", marginBottom: 10 }}>
-                    {/* Row header */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "#185FA5" }}>Trip Row {ri + 1}</span>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1055,19 +1039,16 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Date From / To */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                       <div><label style={{ ...lbl, fontSize: 11 }}>Date From</label><input type="date" style={{ ...inp, fontSize: 12 }} value={row.dateFrom} onChange={e => upR(activeEntry, ri, "dateFrom", e.target.value)} /></div>
                       <div><label style={{ ...lbl, fontSize: 11 }}>Date To</label><input type="date" style={{ ...inp, fontSize: 12 }} value={row.dateTo} onChange={e => upR(activeEntry, ri, "dateTo", e.target.value)} /></div>
                     </div>
 
-                    {/* Particulars */}
                     <div style={{ marginBottom: 8 }}>
                       <label style={{ ...lbl, fontSize: 11 }}>Particulars / Description</label>
                       <textarea rows={2} style={{ ...inp, fontSize: 12, resize: "vertical" }} value={row.particulars} onChange={e => upR(activeEntry, ri, "particulars", e.target.value)} onKeyDown={e => { if (e.key === "Enter") e.stopPropagation(); }} placeholder="e.g. LOCAL USE DZIRE — Chandigarh to Mohali" />
                     </div>
 
-                    {/* Without limit: rate + amount fields */}
                     {!row.useLimit && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
@@ -1086,7 +1067,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* With limit: show LimitEditor */}
                     {row.useLimit && (
                       <LimitEditor
                         lim={row.limit || emptyLimit()}
@@ -1110,7 +1090,6 @@ export default function App() {
                   <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Additional Charges</div>
                   {(bill.charges || []).map((c, ci) => {
                     const isPerDay = PER_DAY_CHARGE_IDS.includes(c.id);
-                    // Auto-detect max days from trip rows for suggestion
                     const tripDays = Math.max(1, ...bill.rows.map(r => r.dateFrom ? calcDays(r.dateFrom, r.dateTo) : 1));
                     return (
                       <div key={c.id} style={{ marginBottom: 10, padding: "8px 10px", background: "#FAFAFA", borderRadius: 8, border: "0.5px solid #ddd" }}>
@@ -1124,7 +1103,6 @@ export default function App() {
                               ? <option value="perDay">Per Day Rate</option>
                               : <option value="value">Enter ₹</option>}
                           </select>
-                          {/* Normal charge: flat amount */}
                           {!isPerDay && c.mode === "value" && (
                             <input type="number" style={{ ...inp, width: 80, fontSize: 12 }} value={c.value}
                               onChange={e => upC(activeEntry, c.id, "value", e.target.value)} placeholder="₹" />
@@ -1132,7 +1110,6 @@ export default function App() {
                           <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "3px 8px", fontSize: 11 }}
                             onClick={() => upE(activeEntry, "charges", (bill.charges || []).filter((_, i) => i !== ci))}>✕</button>
                         </div>
-                        {/* Per-day charge: rate + days selector */}
                         {isPerDay && c.mode === "perDay" && (
                           <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
                             <div style={{ flex: 1, minWidth: 120 }}>
@@ -1205,7 +1182,6 @@ export default function App() {
                   {(bill.gstLines || []).map((g, gi) => (
                     <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, fontWeight: 500, minWidth: 55, color: "#333" }}>{g.label}</span>
-                      {/* Mode: None / Nil / % */}
                       <div style={{ display: "flex", gap: 4 }}>
                         {["none","nil","value"].map(m => (
                           <button key={m} onClick={() => {
