@@ -1,5 +1,6 @@
 import logo from './assets/logo.png'
 import { useState, useRef } from "react";
+import LoginPage from "./LoginPage.jsx";
 import { supabase } from "./supabase.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -531,10 +532,6 @@ function LimitEditor({ lim, onChange, calcResult }) {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [page, setPage] = useState("login");
-  const [loginUser, setLoginUser] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [loginErr, setLoginErr] = useState("");
-  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState([]);
   const [rates, setRates] = useState(RATES_DEFAULT);
@@ -610,10 +607,13 @@ export default function App() {
     setLoading(false);
   };
 
-  const login = async () => {
-    if (loginUser.trim().toUpperCase() === "BHARDWAJ123" && loginPass.trim() === "BHARDWAJ999GTA") {
-      setLoginErr(""); await loadData(); setPage("home");
-    } else setLoginErr("Invalid username or password.");
+  const handleLogin = async (username, password) => {
+    if (username.trim().toUpperCase() === "BHARDWAJ123" && password.trim() === "BHARDWAJ999GTA") {
+      await loadData();
+      setPage("home");
+      return null;
+    }
+    return "Invalid username or password.";
   };
 
   const showToast = (msg) => {
@@ -810,22 +810,7 @@ export default function App() {
   }, { count: 0, grand: 0, subtotal: 0, gstBreak: {} });
 
   // ══════════════════════ PAGE: LOGIN ══════════════════════════
-  if (page === "login") return (
-    <div style={{ ...s, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ ...card, width: 320, textAlign: "center" }}>
-        <img src={logo} style={{ width: 64, height: 64, margin: "0 auto 12px", objectFit: "contain" }} />
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Bhardwaj Travels</div>
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 20 }}>Billing Software</div>
-        <input style={{ ...inp, marginBottom: 10 }} placeholder="Username" value={loginUser} onChange={e => setLoginUser(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <input style={{ ...inp, paddingRight: 36 }} type={showPass ? "text" : "password"} placeholder="Password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
-          <span onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", cursor: "pointer", fontSize: 16 }}>{showPass ? "🙈" : "👁️"}</span>
-        </div>
-        {loginErr && <div style={{ fontSize: 12, color: "red", marginBottom: 8 }}>{loginErr}</div>}
-        <button style={{ ...btn(), width: "100%" }} onClick={login}>{loading ? "Loading..." : "Login"}</button>
-      </div>
-    </div>
-  );
+  if (page === "login") return <LoginPage logo={logo} onSubmit={handleLogin} />;
 
   // ══════════════════════ PAGE: HOME ══════════════════════════
   if (page === "home") return (
