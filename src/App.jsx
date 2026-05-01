@@ -11,7 +11,7 @@ const BUSINESS = {
   address: "#218-O, Victoria City / Enclave, Bhabat, Zirakpur, Mohali, Punjab-140603",
   phones: ["94175-66648", "98159-70070"], email: "bhardwajtravels999@gmail.com",
   gstin: "03BJZPB5991C1Z1",
-  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travel's", upi: "9815970070@CNRB" },
+  bank: { name: "Canara Bank", acc: "120000614457", ifsc: "CNRB0001625", holder: "Bhardwaj Travels", upi: "9815970070@CNRB" },
   terms: ["E. & O.E.", "All disputes subject to Mohali jurisdiction.", "Kilometer & Time will be charged garage to garage.", "Luggage/Goods being carried at owner's risk."]
 };
 
@@ -263,36 +263,38 @@ function BillA4({ b }) {
 
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <img src={logo} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, marginTop: 3 }} />
-              <div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <img src={logo} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0 }} />
                 <div style={{ fontWeight: 900, fontSize: "21pt", fontFamily: "'Georgia', 'Times New Roman', serif", lineHeight: 1.0, color: "#000", whiteSpace: "nowrap" }}>{BUSINESS.name}</div>
-                <div style={{ fontSize: "7.5pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", marginTop: 1, letterSpacing: "0.5px" }}>{BUSINESS.tagline}</div>
-                <div style={{ fontSize: "6.5pt", color: "#555", marginTop: 2 }}>{BUSINESS.deals}</div>
-                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>{BUSINESS.address}</div>
-                <div style={{ fontSize: "6.5pt", color: "#444", marginTop: 1 }}>Mob: {BUSINESS.phones.join(" / ")} &nbsp;|&nbsp; {BUSINESS.email}</div>
+              </div>
+              <div style={{ paddingLeft: 0, marginLeft: 0 }}>
+                <div style={{ fontSize: "10pt", fontStyle: "italic", fontWeight: 700, color: "#185FA5", letterSpacing: "0.5px", lineHeight: 1.6, paddingLeft: 0, marginLeft: 0 }}>{BUSINESS.tagline}</div>
+                <div style={{ fontSize: "9pt", fontWeight: 700, color: "#555", lineHeight: 1.6, paddingLeft: 0, marginLeft: 0 }}>{BUSINESS.deals}</div>
+                <div style={{ fontSize: "9pt", fontWeight: 700, color: "#444", lineHeight: 1.6, paddingLeft: 0, marginLeft: 0 }}>{BUSINESS.address}</div>
+                <div style={{ fontSize: "9pt", fontWeight: 700, color: "#444", lineHeight: 1.6, paddingLeft: 0, marginLeft: 0 }}>Mob: {BUSINESS.phones.join(" / ")} &nbsp;|&nbsp; {BUSINESS.email}</div>
               </div>
             </div>
             <div style={{ textAlign: "right", minWidth: 165 }}>
               <div style={{ fontSize: "18pt", fontWeight: 900, color: "#185FA5", fontFamily: "'Georgia','Times New Roman',serif", letterSpacing: "1px" }}>TAX INVOICE</div>
-              <div style={{ fontSize: "8pt" }}>GSTIN: {BUSINESS.gstin}</div>
-              <div style={{ fontSize: "9pt", fontWeight: 700, display: "flex", flexWrap: "wrap", gap: "2px 12px", alignItems: "baseline", justifyContent: "flex-end", marginTop: 1 }}>
+              <div style={{ fontSize: "10.5pt", fontWeight: 700 }}>GSTIN: {BUSINESS.gstin}</div>
+              <div style={{ fontSize: "11pt", fontWeight: 700, display: "flex", flexWrap: "wrap", gap: "2px 12px", alignItems: "baseline", justifyContent: "flex-end", marginTop: 1 }}>
                 <span>Invoice No: {b.invoiceNo}</span>
                 <span>Duty Slip: {b.dutySlipNo || "—"}</span>
               </div>
-              <div style={{ fontSize: "8pt", marginTop: 1 }}>Date: {fmtDate(b.date)}</div>
-              {b.cabNo && <div style={{ fontSize: "8pt" }}>Cab No: {b.cabNo}</div>}
-              <div style={{ fontSize: "8pt" }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
+              <div style={{ fontSize: "10.5pt", fontWeight: 700, marginTop: 1 }}>Date: {fmtDate(b.date)}</div>
+              {b.cabNo && <div style={{ fontSize: "10.5pt", fontWeight: 700 }}>Cab No: {b.cabNo}</div>}
+              <div style={{ fontSize: "10.5pt", fontWeight: 700 }}>Duty: {b.dutyType === "local" ? "Local Duty" : b.dutyType === "outstation" ? "Outstation" : b.dutyType}</div>
             </div>
           </div>
 
           {/* Bill To */}
           <div style={{ borderTop: "2px solid #185FA5", borderBottom: "1px solid #185FA5", padding: "5px 0", marginBottom: 8 }}>
-            <div style={{ fontSize: "9pt", color: "#555" }}>Bill To:</div>
-            <div style={{ fontWeight: 700, fontSize: "13pt" }}>{b.clientName}</div>
-            {b.clientPhone && <div style={{ fontSize: "9pt" }}>{b.clientPhone}</div>}
-            {b.clientAddress && <div style={{ fontSize: "9pt" }}>{b.clientAddress}</div>}
-            {b.clientGstin && <div style={{ fontSize: "9pt" }}>GSTIN: {b.clientGstin}</div>}
+            <div style={{ fontSize: "11pt", fontWeight: 700, color: "#555" }}>Bill To:</div>
+            <div style={{ fontWeight: 700, fontSize: "15pt" }}>{b.clientName}</div>
+            {b.clientPhone && <div style={{ fontSize: "11pt", fontWeight: 700 }}>{b.clientPhone}</div>}
+            {b.clientAddress && <div style={{ fontSize: "11pt", fontWeight: 700 }}>{b.clientAddress}</div>}
+            {b.clientGstin && <div style={{ fontSize: "11pt", fontWeight: 700 }}>GSTIN: {b.clientGstin}</div>}
           </div>
 
           {/* Trip Table */}
@@ -372,9 +374,9 @@ function BillA4({ b }) {
 
             {/* Signature */}
             <div style={{ textAlign: "right", minWidth: 200 }}>
-              <div style={{ fontFamily: "cursive", fontSize: "21pt", color: "#185FA5", marginBottom: 4 }}>Thanks For Visit</div>
-              <div style={{ marginTop: 52, borderTop: "1.5px solid #333", paddingTop: 6, fontSize: "15.5pt", fontWeight: 700, fontFamily: "'Georgia','Times New Roman',serif" }}>For Bhardwaj Travels</div>
-              <div style={{ fontSize: "12pt", marginTop: 4, color: "#444", fontStyle: "italic" }}>Prop.</div>
+              <div style={{ fontFamily: "cursive", fontSize: "21pt", color: "#185FA5", marginBottom: 12 }}>Thanks For Visit</div>
+              <div style={{ fontSize: "15.5pt", fontWeight: 700, fontFamily: "'Georgia','Times New Roman',serif", marginBottom: 70 }}>For Bhardwaj Travels</div>
+              <div style={{ fontSize: "12pt", color: "#444", fontStyle: "italic" }}>Prop.</div>
             </div>
           </div>
 
@@ -558,6 +560,7 @@ export default function App() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [viewingBill, setViewingBill] = useState(null);
   const [editingBillId, setEditingBillId] = useState(null);
+  const [toast, setToast] = useState("");
   const billsRef = useRef();
   const viewBillRef = useRef();
 
@@ -613,6 +616,11 @@ export default function App() {
     } else setLoginErr("Invalid username or password.");
   };
 
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
+
   const saveBill = async () => {
     const valid = entries.every(e => e.invoiceNo && e.clientName);
     if (!valid) { alert("Please fill Invoice No and Client Name for all entries."); return; }
@@ -630,9 +638,18 @@ export default function App() {
         });
         if (error) { console.error("Insert error:", error); alert("Save failed: " + error.message); return; }
       }
-      await loadData();
-      alert("Bills saved successfully!");
-      setActiveEntry(0); setPreviewMode(false);
+      const { data: billsData } = await supabase.from("bills").select("*").order("saved_at", { ascending: false });
+      if (billsData) {
+        setBills(billsData.map(b => ({
+          ...b,
+          rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
+          charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
+          gstLines: b.gst_lines || [],
+          dutySlipNo: b.duty_slip_no || "",
+          toll: b.toll || DEFAULT_TOLL,
+        })));
+      }
+      showToast("Bill saved successfully!");
     } finally { setLoading(false); }
   };
 
@@ -797,7 +814,7 @@ export default function App() {
     <div style={{ ...s, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ ...card, width: 320, textAlign: "center" }}>
         <img src={logo} style={{ width: 64, height: 64, margin: "0 auto 12px", objectFit: "contain" }} />
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Bhardwaj Travel's</div>
+        <div style={{ fontSize: 18, fontWeight: 500 }}>Bhardwaj Travels</div>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 20 }}>Billing Software</div>
         <input style={{ ...inp, marginBottom: 10 }} placeholder="Username" value={loginUser} onChange={e => setLoginUser(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
         <div style={{ position: "relative", marginBottom: 10 }}>
@@ -813,10 +830,15 @@ export default function App() {
   // ══════════════════════ PAGE: HOME ══════════════════════════
   if (page === "home") return (
     <div style={s}>
+      {toast && (
+        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#1a7a3f", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 600, zIndex: 9999, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", pointerEvents: "none" }}>
+          {toast}
+        </div>
+      )}
       <div style={{ background: "#185FA5", color: "#fff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={logo} style={{ width: 32, height: 32, objectFit: "contain" }} />
-          <div><div style={{ fontWeight: 500, fontSize: 15 }}>Bhardwaj Travel's</div><div style={{ fontSize: 11, opacity: 0.8 }}>Billing Software</div></div>
+          <div><div style={{ fontWeight: 500, fontSize: 15 }}>Bhardwaj Travels</div><div style={{ fontSize: 11, opacity: 0.8 }}>Billing Software</div></div>
         </div>
         <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), fontSize: 12 }} onClick={() => setPage("login")}>Logout</button>
       </div>
