@@ -1,6 +1,8 @@
 import logo from './assets/logo.png'
 import { useState, useRef } from "react";
 import LoginPage from "./LoginPage.jsx";
+import HomePage from "./HomePage.jsx";
+import BillHistoryPage from "./BillHistoryPage.jsx";
 import { supabase } from "./supabase.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -814,38 +816,14 @@ export default function App() {
 
   // ══════════════════════ PAGE: HOME ══════════════════════════
   if (page === "home") return (
-    <div style={s}>
+    <>
       {toast && (
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#1a7a3f", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 600, zIndex: 9999, boxShadow: "0 4px 16px rgba(0,0,0,0.18)", pointerEvents: "none" }}>
           {toast}
         </div>
       )}
-      <div style={{ background: "#185FA5", color: "#fff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={logo} style={{ width: 32, height: 32, objectFit: "contain" }} />
-          <div><div style={{ fontWeight: 500, fontSize: 15 }}>Bhardwaj Travels</div><div style={{ fontSize: 11, opacity: 0.8 }}>Billing Software</div></div>
-        </div>
-        <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), fontSize: 12 }} onClick={() => setPage("login")}>Logout</button>
-      </div>
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {[{ icon: "📄", label: "Create Bill", page: "create", color: "#E6F1FB", border: "#185FA5", text: "#185FA5" }, { icon: "📁", label: "History", page: "history", color: "#EAF3DE", border: "#3B6D11", text: "#3B6D11" }, { icon: "✅", label: "Checklist", page: "checklist", color: "#FAEEDA", border: "#854F0B", text: "#854F0B" }, { icon: "📊", label: "Summary", page: "summary", color: "#FBEAF0", border: "#993556", text: "#993556" }].map(item => (
-            <div key={item.page} onClick={() => setPage(item.page)} style={{ background: item.color, border: `1.5px solid ${item.border}`, borderRadius: 16, padding: "24px 16px", textAlign: "center", cursor: "pointer" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>{item.icon}</div>
-              <div style={{ fontWeight: 500, color: item.text, fontSize: 15 }}>{item.label}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>Quick Stats</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 500, color: "#185FA5" }}>{bills.length}</div><div style={{ fontSize: 11, color: "#666" }}>Total Bills</div></div>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 500, color: "#3B6D11" }}>{bills.filter(b => b.paid).length}</div><div style={{ fontSize: 11, color: "#666" }}>Paid</div></div>
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 500, color: "#A32D2D" }}>{bills.filter(b => !b.paid).length}</div><div style={{ fontSize: 11, color: "#666" }}>Unpaid</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <HomePage bills={bills} onNavigate={(p) => setPage(p)} onLogout={() => setPage("login")} />
+    </>
   );
 
   // ══════════════════════ PAGE: VIEW BILL ══════════════════════════
@@ -1292,74 +1270,33 @@ export default function App() {
 
   // ══════════════════════ PAGE: HISTORY ══════════════════════════
   if (page === "history") {
-    const groups = groupByMonth(filteredHistory);
     return (
-      <div style={s}>
-        <div style={{ background: "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), padding: "4px 10px" }} onClick={() => setPage("home")}>← Back</button>
-          <span style={{ fontWeight: 500 }}>Bill History</span>
-        </div>
-        <div style={{ padding: 12 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <select style={{ ...inp, width: 130, fontSize: 12 }} value={historyKey} onChange={e => setHistoryKey(e.target.value)}>
-              <option value="clientName">Client Name</option><option value="invoiceNo">Invoice No</option><option value="cabNo">Cab No</option><option value="clientGstin">Client GSTIN</option><option value="dutyType">Duty Type</option>
-            </select>
-            <input style={{ ...inp, flex: 1 }} placeholder="Search..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
-          </div>
-          {groups.length === 0 && <div style={{ textAlign: "center", color: "#666", padding: 40 }}>No bills found.</div>}
-          {groups.map((g, gi) => (
-            <div key={gi}>
-              <div style={{ background: "#E6F1FB", borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontWeight: 500, color: "#185FA5", fontSize: 14 }}>{g.label}</span>
-                <span style={{ fontSize: 12, color: "#185FA5" }}>Total: ₹{g.total.toFixed(2)}</span>
-              </div>
-              {g.bills.map(b => {
-                const c = calcBill(b);
-                const initials = (b.client_name || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-                return (
-                  <div key={b.id} style={{ ...card, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#185FA5", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 500, fontSize: 13, flexShrink: 0 }}>{initials}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{b.client_name}</div>
-                      <div style={{ fontSize: 11, color: "#666" }}>#{b.invoice_no} · {b.date} · {b.cab_no}</div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 10, background: b.duty_type === "local" ? "#EAF3DE" : "#FAEEDA", color: b.duty_type === "local" ? "#3B6D11" : "#854F0B", borderRadius: 4, padding: "1px 6px" }}>{b.duty_type === "local" ? "Local" : b.duty_type === "outstation" ? "Outstation" : b.duty_type}</span>
-                        <span style={{ fontSize: 10, background: b.paid ? "#EAF3DE" : "#FCEBEB", color: b.paid ? "#3B6D11" : "#A32D2D", borderRadius: 4, padding: "1px 6px" }}>{b.paid ? "Paid" : "Unpaid"}</span>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>₹{c.grand.toFixed(2)}</div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                        <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10 }} onClick={() => openBill(b, "history")}>👁 View</button>
-                        <button style={{ ...btn("#EAF3DE", "#3B6D11"), padding: "2px 6px", fontSize: 10 }} onClick={() => {
-                          const editEntry = {
-                            invoiceNo: b.invoice_no, dutySlipNo: b.duty_slip_no || "",
-                            cabNo: b.cab_no, date: b.date,
-                            clientName: b.client_name, clientPhone: b.client_phone || "",
-                            clientAddress: b.client_address || "", clientGstin: b.client_gstin || "",
-                            dutyType: b.duty_type,
-                            rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
-                            charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
-                            gstLines: b.gst_lines || b.gstLines || [],
-                            toll: b.toll || DEFAULT_TOLL,
-                            paid: b.paid || false,
-                          };
-                          setEditingBillId(b.id);
-                          setEntries([editEntry]);
-                          setActiveEntry(0);
-                          setPreviewMode(false);
-                          setPage("create");
-                        }}>✏️ Edit</button>
-                        <button style={{ ...btn("#FCEBEB", "#A32D2D"), padding: "2px 6px", fontSize: 10 }} onClick={() => deleteBill(b.id)}>Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
+      <BillHistoryPage
+        bills={bills}
+        onBack={() => setPage("home")}
+        onView={b => openBill(b, "history")}
+        onEdit={b => {
+          const editEntry = {
+            invoiceNo: b.invoice_no, dutySlipNo: b.duty_slip_no || "",
+            cabNo: b.cab_no, date: b.date,
+            clientName: b.client_name, clientPhone: b.client_phone || "",
+            clientAddress: b.client_address || "", clientGstin: b.client_gstin || "",
+            dutyType: b.duty_type,
+            rows: (b.rows || []).map(r => ({ ...r, dateFrom: r.dateFrom || r.date || "", dateTo: r.dateTo || "", useLimit: r.useLimit || false, limit: r.limit || emptyLimit() })),
+            charges: (b.charges || []).filter(c => c.id !== "toll" && c.id !== "extraKm" && c.id !== "extraHrs").map(c => PER_DAY_CHARGE_IDS.includes(c.id) ? { id: c.id, label: c.label, mode: c.mode || "none", perDayRate: c.perDayRate || "", perDayDays: c.perDayDays || "" } : { id: c.id, label: c.label, mode: c.mode || "none", value: c.value || "" }),
+            gstLines: b.gst_lines || b.gstLines || [],
+            toll: b.toll || DEFAULT_TOLL,
+            paid: b.paid || false,
+          };
+          setEditingBillId(b.id);
+          setEntries([editEntry]);
+          setActiveEntry(0);
+          setPreviewMode(false);
+          setPage("create");
+        }}
+        onDelete={deleteBill}
+        calcBill={calcBill}
+      />
     );
   }
 
