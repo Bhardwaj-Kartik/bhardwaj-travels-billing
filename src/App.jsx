@@ -253,8 +253,7 @@ function BillA4({ b }) {
     }
   });
 
-  const emptyNeeded = Math.max(0, 5 - printRows.length);
-  const td = (extra = {}) => ({ padding: "9px 12px", border: "0.75px solid #999", ...extra });
+  const td = (extra = {}) => ({ padding: "6px 10px", border: "0.75px solid #999", ...extra });
 
   return (
     <div style={{ background: "#fff", color: "#000", fontSize: "11pt", width: "794px", height: "1123px", boxSizing: "border-box", padding: 0, fontFamily: "Arial,sans-serif", position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -306,55 +305,49 @@ function BillA4({ b }) {
             <thead>
               <tr style={{ background: "#185FA5", color: "#fff" }}>
                 {["Date of Travel", "Particulars", "Rate", "Amount (₹)"].map((h, i) => (
-                  <th key={i} style={{ padding: "10px 12px", fontSize: "13pt", textAlign: i > 1 ? "right" : "left", border: "0.75px solid #185FA5", fontWeight: 700 }}>{h}</th>
+                  <th key={i} style={{ padding: "6px 10px", fontSize: "13pt", textAlign: i > 1 ? "right" : "left", border: "0.75px solid #185FA5", fontWeight: 700 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {printRows.map((r, ri) => (
                 <tr key={ri}>
-                  <td style={td({ whiteSpace: "nowrap", fontSize: "12pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top", minWidth: 80 })}>{r.dateRange || ""}</td>
-                  <td style={td({ whiteSpace: "pre-wrap", fontSize: "12pt", fontWeight: 700, fontStyle: r.isCharge ? "italic" : "normal", lineHeight: 1.6 })}>{r.particulars}</td>
-                  <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top" })}>{r.rate || ""}</td>
-                  <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top" })}>{r.amount || ""}</td>
-                </tr>
-              ))}
-              {Array.from({ length: emptyNeeded }).map((_, i) => (
-                <tr key={"e" + i}>
-                  <td style={td({ height: 32 })}>&nbsp;</td>
-                  <td style={td()}></td><td style={td()}></td><td style={td()}></td>
+                  <td style={td({ whiteSpace: "nowrap", fontSize: "11pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top", minWidth: 80 })}>{r.dateRange || ""}</td>
+                  <td style={td({ whiteSpace: "pre-wrap", fontSize: "11pt", fontWeight: 700, fontStyle: r.isCharge ? "italic" : "normal", lineHeight: 1.6 })}>{r.particulars}</td>
+                  <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top" })}>{r.rate || ""}</td>
+                  <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700, lineHeight: 1.6, verticalAlign: "top" })}>{r.amount || ""}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr style={{ background: "#f0f0f0" }}>
-                <td colSpan={3} style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>Total</td>
-                <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>₹{c.subtotal.toFixed(2)}</td>
+                <td colSpan={3} style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>Total</td>
+                <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>₹{c.subtotal.toFixed(2)}</td>
               </tr>
               {(b.gstLines || []).filter(g => g.enabled || g.nil).map(g => (
                 <tr key={g.id}>
-                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>{g.label} @ {g.pct}%</td>
-                  <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>{g.nil ? "Nil" : `₹${(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}`}</td>
+                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>{g.label} @ {g.pct}%</td>
+                  <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>{g.nil ? "Nil" : `₹${(c.subtotal * (parseFloat(g.pct) || 0) / 100).toFixed(2)}`}</td>
                 </tr>
               ))}
               {toll.mode !== "none" && (
                 <tr>
-                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>Toll / Parking / Entry Tax</td>
-                  <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>{toll.mode === "nil" ? "Nil" : `₹${parseFloat(toll.value || 0).toFixed(2)}`}</td>
+                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>Toll / Parking / Entry Tax</td>
+                  <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>{toll.mode === "nil" ? "Nil" : `₹${parseFloat(toll.value || 0).toFixed(2)}`}</td>
                 </tr>
               )}
               {c.roundingAmt > 0 && (
                 <tr>
-                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>Rounded Off (+)</td>
-                  <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700 })}>₹{c.roundingAmt.toFixed(2)}</td>
+                  <td colSpan={3} style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>Rounded Off (+)</td>
+                  <td style={td({ textAlign: "right", fontSize: "11pt", fontWeight: 700 })}>₹{c.roundingAmt.toFixed(2)}</td>
                 </tr>
               )}
               <tr style={{ background: "#185FA5", color: "#fff" }}>
-                <td colSpan={3} style={td({ textAlign: "right", fontSize: "14pt", fontWeight: 700, border: "0.75px solid #185FA5" })}>Grand Total</td>
-                <td style={td({ textAlign: "right", fontSize: "14pt", fontWeight: 700, border: "0.75px solid #185FA5" })}>₹{c.grand.toFixed(2)}</td>
+                <td colSpan={3} style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700, border: "0.75px solid #185FA5" })}>Grand Total</td>
+                <td style={td({ textAlign: "right", fontSize: "12pt", fontWeight: 700, border: "0.75px solid #185FA5" })}>₹{c.grand.toFixed(2)}</td>
               </tr>
               <tr>
-                <td colSpan={4} style={td({ fontSize: "11pt", fontWeight: 600, fontStyle: "italic" })}>Amount in words: {numToWords(c.grand)}</td>
+                <td colSpan={4} style={td({ fontSize: "10pt", fontWeight: 600, fontStyle: "italic" })}>Amount in words: {numToWords(c.grand)}</td>
               </tr>
             </tfoot>
           </table>
