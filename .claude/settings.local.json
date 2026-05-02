@@ -5,7 +5,13 @@
       "Bash(cp \"/Users/kartikbhardwaj/.claude/projects/-Users-kartikbhardwaj-Desktop-bhardwaj-travels-billing/cb4ec554-a1c4-4de9-9ce8-9aa9b460a6e4/tool-results/webfetch-1777706894822-awfwu3.bin\" /tmp/design.gz)",
       "Read(//private/tmp/**)",
       "Bash(gunzip -c /tmp/design.gz)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp \"/Users/kartikbhardwaj/.claude/projects/-Users-kartikbhardwaj-Desktop-bhardwaj-travels-billing/cb4ec554-a1c4-4de9-9ce8-9aa9b460a6e4/tool-results/webfetch-1777707738245-0un325.bin\" /tmp/design2.gz)",
+      "Bash(gunzip -c /tmp/design2.gz)",
+      "Bash(mkdir -p /tmp/design2_contents)",
+      "Bash(tar -xf /tmp/design2_extracted -C /tmp/design2_contents)",
+      "Bash(npm run *)"
     ]
   }
 }

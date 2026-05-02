@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import LoginPage from "./LoginPage.jsx";
 import HomePage from "./HomePage.jsx";
 import BillHistoryPage from "./BillHistoryPage.jsx";
+import SummaryPage from "./SummaryPage.jsx";
 import { supabase } from "./supabase.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -1353,40 +1354,12 @@ export default function App() {
   // ══════════════════════ PAGE: SUMMARY ══════════════════════════
   if (page === "summary") {
     return (
-      <div style={s}>
-        <div style={{ background: "#185FA5", color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button style={{ ...btn("rgba(255,255,255,0.2)", "#fff"), padding: "4px 10px" }} onClick={() => setPage("home")}>← Back</button>
-          <span style={{ fontWeight: 500 }}>Summary</span>
-        </div>
-        <div style={{ padding: 12 }}>
-          <div style={card}>
-            <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 10, color: "#185FA5" }}>Filter</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-              <div><label style={lbl}>From Date</label><input type="date" style={inp} value={summaryFrom} onChange={e => setSummaryFrom(e.target.value)} /></div>
-              <div><label style={lbl}>To Date</label><input type="date" style={inp} value={summaryTo} onChange={e => setSummaryTo(e.target.value)} /></div>
-            </div>
-            <div><label style={lbl}>Client Name (optional)</label><input style={inp} value={summaryClient} placeholder="Leave blank for all" onChange={e => setSummaryClient(e.target.value)} /></div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {[["Total Bills", summaryCalc.count, "#185FA5"], ["Grand Total", `₹${summaryCalc.grand.toFixed(2)}`, "#3B6D11"], ["Taxable Amount", `₹${summaryCalc.subtotal.toFixed(2)}`, "#854F0B"], ...Object.entries(summaryCalc.gstBreak).map(([k, v]) => [`${k} Collected`, `₹${v.toFixed(2)}`, "#993556"])].map(([l, v, col]) => (
-              <div key={l} style={{ ...card, textAlign: "center", padding: "12px 8px" }}><div style={{ fontSize: 18, fontWeight: 500, color: col }}>{v}</div><div style={{ fontSize: 11, color: "#666" }}>{l}</div></div>
-            ))}
-          </div>
-          <div style={card}>
-            <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, color: "#185FA5" }}>Bills in Range ({summaryBills.length})</div>
-            {summaryBills.length === 0 && <div style={{ color: "#666", fontSize: 13 }}>No bills in selected range.</div>}
-            {summaryBills.map(b => { const c = calcBill(b); return (
-              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "0.5px solid #eee", fontSize: 12 }}>
-                <div><span style={{ fontWeight: 500 }}>{b.client_name}</span><span style={{ color: "#666", marginLeft: 8 }}>#{b.invoice_no} · {b.date}</span></div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontWeight: 500 }}>₹{c.grand.toFixed(2)}</span>
-                  <button style={{ ...btn("#E6F1FB", "#185FA5"), padding: "2px 6px", fontSize: 10 }} onClick={() => openBill(b, "summary")}>👁 View</button>
-                </div>
-              </div>
-            ); })}
-          </div>
-        </div>
-      </div>
+      <SummaryPage
+        bills={bills}
+        onBack={() => setPage("home")}
+        onView={b => openBill(b, "summary")}
+        calcBill={calcBill}
+      />
     );
   }
 }
